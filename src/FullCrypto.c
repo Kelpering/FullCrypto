@@ -10,7 +10,7 @@ uint8_t* ECBAESEnc(uint8_t* Plaintext, size_t Size, uint8_t* Key)
     uint8_t PadByte = 16 - (Size%16);
     uint8_t* NewPT = malloc(PadByte + Size);
 
-    for (size_t i = 0; i < Size; i++
+    for (size_t i = 0; i < Size; i++)
         NewPT[i] = Plaintext[i];
     for (size_t i = Size; i < Size+PadByte; i++)
         NewPT[i] = PadByte;
@@ -26,8 +26,15 @@ uint8_t* ECBAESEnc(uint8_t* Plaintext, size_t Size, uint8_t* Key)
     return NewPT;
 }
 
-uint8_t* ECBAESDec(uint8_t* Ciphertext, uint8_t* Key)
+ByteArr ECBAESDec(uint8_t* Ciphertext, size_t Size, uint8_t* Key)
 {
-    // a
-    return NULL;
+    for (size_t i = 0; i < Size; i+=16)
+        AESDec(Ciphertext + i, Key);
+
+    uint8_t PadByte = Ciphertext[Size-1];
+    uint8_t* NewCT = malloc(Size-PadByte);
+    for (size_t i = 0; i < Size-PadByte; i++)
+        NewCT[i] = Ciphertext[i];
+
+    return NewCT;
 }
