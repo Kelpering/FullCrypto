@@ -78,6 +78,7 @@ ByteArr CBCAESEnc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key, con
 ByteArr CBCAESDec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key, const uint8_t* IV)
 {
     //? Copy over Ciphertext
+    printf("Seg Fault before Here");
     uint8_t* Temp = malloc(Size);
     for (size_t i = 0; i < Size; i++)
         Temp[i] = Ciphertext[i];

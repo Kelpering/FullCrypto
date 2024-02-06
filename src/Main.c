@@ -13,16 +13,18 @@ int main()
 
     NewArr = CBCAESEnc(Data, 19, Key, IV);
 
-    printf("SIZE: %d\n", NewArr.Size);
-    for (int i = 0; i < NewArr.Size; i++)
+    printf("SIZE: %lu\n", NewArr.Size);
+    for (size_t i = 0; i < NewArr.Size; i++)
         printf("0x%.2X, ", NewArr.Arr[i]);
-    printf("\n");
+    printf("\nTEST");
+    
+    printf("SEG FAULT\n");
 
     // Slight Memory leak here. NewArr never gets freed, as it is re-assigned.
     ByteArr NewArr2 = CBCAESDec(NewArr.Arr, 32, Key, IV);
 
-    printf("SIZE: %d\n", NewArr2.Size);
-    for (int i = 0; i < NewArr2.Size; i++)
+    printf("SIZE: %lu\n", NewArr2.Size);
+    for (size_t i = 0; i < NewArr2.Size; i++)
         printf("0x%.2X, ", NewArr2.Arr[i]);
     printf("\n");
 
