@@ -39,9 +39,9 @@ void AESEnc(uint8_t* Plaintext, const uint8_t* Key)
     AddRoundKey(State, (EKey+(14*16)));
 
     //? Clear and de-allocate Expanded Key
-    for (int i = 0; i < 60; i++)
-        EKey[i] = 0;
-    free(EKey);
+    // for (int i = 0; i < 60; i++)
+    //     EKey[i] = 0;
+    // free(EKey);  Possible segfault risk
 
     //? Fill Data sideways
     Plaintext[0] = State[0];
@@ -69,6 +69,7 @@ void AESDec(uint8_t* Ciphertext, const uint8_t* Key)
     //? If InvSBox has never been run before, initialize.
     if (InvSBox[0] != 0x63)
         InitInvSBox();
+    
 
     //? Fill state sideways
     uint8_t State[] = 
@@ -100,9 +101,9 @@ void AESDec(uint8_t* Ciphertext, const uint8_t* Key)
     AddRoundKey(State, EKey + 0);
     
     //? Clear and de-allocate Expanded Key
-    for (int i = 0; i < 60; i++)
-        EKey[i] = 0;
-    free(EKey);
+    // for (int i = 0; i < 30; i++)
+    //     EKey[i] = 0;
+    //free(EKey);     //! Free here is SegFaulting somehow, although I am unsure why.
 
     //? Fill Data sideways
     Ciphertext[0] = State[0];
