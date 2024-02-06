@@ -1,40 +1,53 @@
 #include "../include/FullCrypto.h"
-
-// ECB AES256
+#include <stdio.h>
 
 // CBC AES256
 
-uint8_t* ECBAESEnc(uint8_t* Plaintext, size_t Size, uint8_t* Key)
+ByteArr ECBAESEnc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key)
 {
-    //! Needs testing
+    //? Declare variables & ByteArr struct
+    ByteArr NewArr;
     uint8_t PadByte = 16 - (Size%16);
-    uint8_t* NewPT = malloc(PadByte + Size);
+    NewArr.Size = Size + PadByte;
+    NewArr.Arr = malloc(NewArr.Size);
 
+    //? Copy over Plaintext to NewArr, then Pad to a multiple of 16
     for (size_t i = 0; i < Size; i++)
-        NewPT[i] = Plaintext[i];
-    for (size_t i = Size; i < Size+PadByte; i++)
-        NewPT[i] = PadByte;
+        NewArr.Arr[i] = Plaintext[i];
+    for (size_t i = Size; i < NewArr.Size; i++)
+        NewArr.Arr[i] = PadByte;
 
-    for (size_t i = 0; i < Size+PadByte; i+=16)
-        AESEnc(NewPT + i, Key);
-
-    // Pad data with the number equal to pad bytes (minimum 1, maximum 16)
-    // Copy to new buffer. Recommend in documentation to free Plaintext.
-    // Loop through all
+    //? Encrypt each 16 byte block.
+    for (size_t i = 0; i < NewArr.Size; i+=16)
+        AESEnc(NewArr.Arr + i, Key);
 
     //! Needs to be de-allocated
-    return NewPT;
+    return NewArr;
 }
 
-ByteArr ECBAESDec(uint8_t* Ciphertext, size_t Size, uint8_t* Key)
+ByteArr ECBAESDec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key)
 {
+    //? Copy over Ciphertext
+    uint8_t* Temp = malloc(Size);
+    for (size_t i = 0; i < Size; i++)
+        Temp[i] = Ciphertext[i];
+
+    //? Decrypt Temp, 16 bytes at a time
     for (size_t i = 0; i < Size; i+=16)
-        AESDec(Ciphertext + i, Key);
+        AESDec(Temp + i, Key);
 
-    uint8_t PadByte = Ciphertext[Size-1];
-    uint8_t* NewCT = malloc(Size-PadByte);
-    for (size_t i = 0; i < Size-PadByte; i++)
-        NewCT[i] = Ciphertext[i];
+    //? Declare ByteArr Struct
+    ByteArr NewArr;
+    NewArr.Size = Size - Temp[Size-1];
+    NewArr.Arr = malloc(NewArr.Size);
 
-    return NewCT;
+    //? Copy over Temp to ByteArr
+    for (size_t i = 0; i < Size-Temp[Size-1]; i++)
+        NewArr.Arr[i] = Temp[i];
+
+    //? Free allocated Temp
+    free (Temp);
+
+    //! Needs to be de-allocated
+    return NewArr;
 }
