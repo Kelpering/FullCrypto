@@ -51,3 +51,9 @@ ByteArr ECBAESDec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key)
     //! Needs to be de-allocated
     return NewArr;
 }
+
+ByteArr CBCAESEnc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key)
+{
+// Gen IV of 16 bytes, xor with plaintext
+    return (ByteArr) {NULL, 0};
+}
