@@ -41,7 +41,7 @@ void AESEnc(uint8_t* Plaintext, const uint8_t* Key)
     //? Clear and de-allocate Expanded Key
     // for (int i = 0; i < 60; i++)
     //     EKey[i] = 0;
-    // free(EKey);  Possible segfault risk
+    free(EKey);  // Possible segfault risk
 
     //? Fill Data sideways
     Plaintext[0] = State[0];
@@ -103,7 +103,7 @@ void AESDec(uint8_t* Ciphertext, const uint8_t* Key)
     //? Clear and de-allocate Expanded Key
     // for (int i = 0; i < 30; i++)
     //     EKey[i] = 0;
-    //free(EKey);     //! Free here is SegFaulting somehow, although I am unsure why.
+    free(EKey);     //! Free here is SegFaulting somehow, although I am unsure why.
 
     //? Fill Data sideways
     Ciphertext[0] = State[0];

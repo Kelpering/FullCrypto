@@ -59,19 +59,23 @@ ByteArr CBCAESEnc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key, con
 
     for (size_t i = 0; i < Size; i++)
         NewArr.Arr[i] = Plaintext[i];
+        
     for (size_t i = Size; i < NewArr.Size; i++)
         NewArr.Arr[i] = PadByte;
 
     for (int i = 0; i < 16; i++)
         NewArr.Arr[i] ^= IV[i];
-    
-    for (size_t i = 0; i < NewArr.Size; i+=16)
+
+    for (size_t i = 0; i < NewArr.Size - 16; i+=16)
     {
         AESEnc(NewArr.Arr+i, Key);
         for (int j = 0; j < 16; j++)
             NewArr.Arr[i+16 + j] ^= NewArr.Arr[i + j];
     }
+    // Final one without CBC function
+    AESEnc(NewArr.Arr+NewArr.Size-16, Key);
 
+    //! Needs to be de-allocated
     return NewArr;
 }
 
@@ -83,12 +87,9 @@ ByteArr CBCAESDec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key, co
         Temp[i] = Ciphertext[i];
 
     //? Decrypt Temp, 16 bytes at a time
-    //! Here is the Seg Fault
     for (size_t i = 0; i < Size; i+=16)
     {
-        printf("SEG FAULT i == %d\n", i);
-        AESDec(Temp, Key);
-        printf("SEG FAULT2 i == %d\n", i);
+        AESDec(Temp + i, Key);
     }
 
     //? XOR each Ciphertext
@@ -99,20 +100,16 @@ ByteArr CBCAESDec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key, co
 
     //? Declare ByteArr Struct
     ByteArr NewArr;
-    NewArr.Size = Size - Temp[Size-1];
+    NewArr.Size = Size - Temp[Size - 1];
     NewArr.Arr = malloc(NewArr.Size);
 
     //? Copy over Temp to ByteArr
-    printf("SEG FAULT\n");
-    //! This here is the next segfault, after commenting free(EKey).
-    //! If this continues, its possible this function is segfaulting, and not the AES function. Although, the "clear" section does seem to be miscalculated. Maybe not.
-    //! Plan: Just use GDB to backtrace whatever debauchery is happening here.
-    for (size_t i = 0; i < Size-Temp[Size-1]; i++)
+    for (size_t i = 0; i < 32; i++)
         NewArr.Arr[i] = Temp[i];
 
     //? Free allocated Temp
-    free (Temp);
-
+    free(Temp);
+    
     //! Needs to be de-allocated
     return NewArr;
 }
