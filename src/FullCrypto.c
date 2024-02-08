@@ -113,3 +113,13 @@ ByteArr CBCAESDec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key, co
     //! Needs to be de-allocated
     return NewArr;
 }
+
+uint8_t* IVGen(uint32_t Seed)
+{
+    srand(Seed);
+    uint8_t* IV = malloc(16);
+
+    for (int i = 0; i < 16; i++)
+        IV[i] = rand() % 256;
+    return IV;
+}
