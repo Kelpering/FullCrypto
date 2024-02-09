@@ -14,6 +14,6 @@ void AESDec(uint8_t* Ciphertext, const uint8_t* Key);
 
 /// @brief Generates a random 32-byte key for use in AES functions.
 /// @param Seed A 32-bit seed value for the rand generator. Recommended to use time(NULL) for the seed.
-/// @returns an allocated, 32-byte, array for use in AES functions. Must be de-allocated to prevent memory leaks.
-/// @warning This function is completely insecure and should only be used for testing.
+/// @returns an allocated, 32-byte array for use in AES functions. Must be de-allocated to prevent memory leaks.
+/// @warning This function is insecure and should only be used for testing.
 uint8_t* AESKeyGen256(uint32_t Seed);

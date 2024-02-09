@@ -3,6 +3,9 @@
 
 ByteArr ECBAESEnc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key)
 {
+    if (Size == 0)
+        return (ByteArr){NULL, 0};
+
     //? Declare variables & ByteArr struct
     ByteArr NewArr;
     uint8_t PadByte = 16 - (Size%16);
@@ -25,6 +28,9 @@ ByteArr ECBAESEnc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key)
 
 ByteArr ECBAESDec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key)
 {
+    if (Size == 0 || Size%16 != 0)
+        return (ByteArr){NULL, 0};
+
     //? Copy over Ciphertext
     uint8_t* Temp = malloc(Size);
     for (size_t i = 0; i < Size; i++)
@@ -52,6 +58,9 @@ ByteArr ECBAESDec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key)
 
 ByteArr CBCAESEnc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* IV)
 {
+    if (Size == 0)
+        return (ByteArr){NULL, 0};
+
     ByteArr NewArr;
     uint8_t PadByte = 16 - (Size%16);
     NewArr.Size = PadByte + Size;
@@ -81,6 +90,9 @@ ByteArr CBCAESEnc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key, con
 
 ByteArr CBCAESDec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key, const uint8_t* IV)
 {
+    if (Size == 0 || Size%16 != 0)
+        return (ByteArr){NULL, 0};
+
     //? Copy over Ciphertext
     uint8_t* Temp = malloc(Size);
     for (size_t i = 0; i < Size; i++)
