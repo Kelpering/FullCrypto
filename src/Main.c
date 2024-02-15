@@ -2,6 +2,7 @@
 #include <time.h>
 #include <stdbool.h>
 #include "../include/FullCrypto.h"
+// Add in Base64, but keep that as a seperate project.
 
 void PrintInfo(uint8_t* Array, size_t Size, bool isString);
 

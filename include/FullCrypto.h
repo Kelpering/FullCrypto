@@ -9,6 +9,13 @@ typedef struct
     size_t  Size;
 } ByteArr;
 
+
+//? Soon to be RSA implementation? Some kinda Public-Private key encryption here soon
+//! Will require -lGMP (Gnu multi precision library).
+
+
+//? AES implementations
+
 /// @brief An ECB encryption implementation of AES-256.
 /// @param Plaintext Plaintext of any positive size, represented as a uint8_t array.
 /// @param Size The size of said uint8_t array.
@@ -48,3 +55,6 @@ ByteArr CBCAESDec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key, co
 /// @returns An allocated 16-byte array. Must be de-allocated to prevent memory leaks.
 /// @warning This function is insecure, and should only be used for testing.
 uint8_t* IVGen(uint32_t Seed);
+
+
+//? MD5 implementations
