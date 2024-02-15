@@ -1,13 +1,18 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdlib.h>
+#include <stdint.h>
 #include "../include/FullCrypto.h"
-// Add in Base64, but keep that as a seperate project.
+#include "../include/Base64.h"
+#include "../include/MD5.h"
 
 void PrintInfo(uint8_t* Array, size_t Size, bool isString);
 
 int main()
 {
+    char HashString[33];
     uint8_t Data[] = "HELLO WORLD!";
     uint8_t* IV = IVGen(time(NULL));
     uint8_t* Key = AESKeyGen256(time(NULL));

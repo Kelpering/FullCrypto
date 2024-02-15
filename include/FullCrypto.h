@@ -2,13 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "../include/AES.h"
-
-typedef struct
-{
-    uint8_t* Arr;
-    size_t  Size;
-} ByteArr;
-
+#include "../include/ByteArr.h"
 
 //? Soon to be RSA implementation? Some kinda Public-Private key encryption here soon
 //! Will require -lGMP (Gnu multi precision library).
@@ -55,6 +49,3 @@ ByteArr CBCAESDec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key, co
 /// @returns An allocated 16-byte array. Must be de-allocated to prevent memory leaks.
 /// @warning This function is insecure, and should only be used for testing.
 uint8_t* IVGen(uint32_t Seed);
-
-
-//? MD5 implementations
