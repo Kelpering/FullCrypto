@@ -9,12 +9,12 @@
 /// @brief Encrypts Plaintext with Key to the AES-256 standard (FIPS-197 compliant).
 /// @param Plaintext 16 bytes of Plaintext to encrypt, directly altered into Ciphertext.
 /// @param Key 32 bytes of a key, used to encrypt Plaintext.
-void AES_Std_Enc(uint8_t* Plaintext, const uint8_t* Key);
+void AES_STD_Enc(uint8_t* Plaintext, const uint8_t* Key);
 
 /// @brief Decrypts Ciphertext with Key to the AES-256 standard (FIPS-197 compliant).
 /// @param Ciphertext 16 bytes of Ciphertext to decrypt, directly altered into Plaintext.
 /// @param Key 32 bytes of a key, used to decrypt Ciphertext.
-void AES_Std_Dec(uint8_t* Ciphertext, const uint8_t* Key);
+void AES_STD_Dec(uint8_t* Ciphertext, const uint8_t* Key);
 
 
 //* AES Implementations
