@@ -1,9 +1,11 @@
 #include "../include/AES.h"
 #include "../include/AESPrivate.h"
 
-//? Public functions
 
-void AESEnc(uint8_t* Plaintext, const uint8_t* Key)
+//* Public functions
+//? AES standard implementation
+
+void AES_STD_Enc(uint8_t* Plaintext, const uint8_t* Key)
 {
     //? If SBox has never been run before, initialize.
     if (SBox[0] != 0x63)
@@ -41,7 +43,7 @@ void AESEnc(uint8_t* Plaintext, const uint8_t* Key)
     //? Clear and de-allocate Expanded Key
     // for (int i = 0; i < 60; i++)
     //     EKey[i] = 0;
-    free(EKey);  // Possible segfault risk
+    free(EKey);
 
     //? Fill Data sideways
     Plaintext[0] = State[0];
@@ -64,7 +66,7 @@ void AESEnc(uint8_t* Plaintext, const uint8_t* Key)
     return;
 }
 
-void AESDec(uint8_t* Ciphertext, const uint8_t* Key)
+void AES_STD_Dec(uint8_t* Ciphertext, const uint8_t* Key)
 {
     //? If InvSBox has never been run before, initialize.
     if (InvSBox[0] != 0x63)
@@ -126,7 +128,9 @@ void AESDec(uint8_t* Ciphertext, const uint8_t* Key)
     return;
 }
 
-uint8_t* AESKeyGen256(uint32_t Seed)
+//? AES non-standard test functions
+
+uint8_t* AES_KeyGen256(uint32_t Seed)
 {
     srand(Seed);
     uint8_t* Key256 = malloc(32);
@@ -136,8 +140,163 @@ uint8_t* AESKeyGen256(uint32_t Seed)
     return Key256;
 }
 
+uint8_t* AES_IVGen(uint32_t Seed)
+{
+    srand(Seed);
+    uint8_t* IV = malloc(16);
 
-//? Key functions
+    for (int i = 0; i < 16; i++)
+        IV[i] = rand() % 256;
+    return IV;
+}
+
+//? AES-ECB implementation
+
+ByteArr AES_ECB_Enc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key)
+{
+    if (Size == 0)
+        return (ByteArr){NULL, 0};
+
+    //? Declare variables & ByteArr struct
+    ByteArr NewArr;
+    uint8_t PadByte = 16 - (Size%16);
+    NewArr.Size = Size + PadByte;
+    NewArr.Arr = malloc(NewArr.Size);
+
+    //? Copy over Plaintext to NewArr, then Pad to a multiple of 16
+    for (size_t i = 0; i < Size; i++)
+        NewArr.Arr[i] = Plaintext[i];
+    for (size_t i = Size; i < NewArr.Size; i++)
+        NewArr.Arr[i] = PadByte;
+
+    //? Encrypt each 16 byte block.
+    for (size_t i = 0; i < NewArr.Size; i+=16)
+        AES_STD_Enc(NewArr.Arr + i, Key);
+
+    //! Needs to be de-allocated
+    return NewArr;
+}
+
+ByteArr AES_ECB_Dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key)
+{
+    if (Size == 0 || Size%16 != 0)
+        return (ByteArr){NULL, 0};
+
+    //? Copy over Ciphertext
+    uint8_t* Temp = malloc(Size);
+    for (size_t i = 0; i < Size; i++)
+        Temp[i] = Ciphertext[i];
+
+    //? Decrypt Temp, 16 bytes at a time
+    for (size_t i = 0; i < Size; i+=16)
+        AES_STD_Dec(Temp + i, Key);
+
+    //? Declare ByteArr Struct
+    ByteArr NewArr;
+    NewArr.Size = Size - Temp[Size-1];
+    NewArr.Arr = malloc(NewArr.Size);
+
+    //? Copy over Temp to ByteArr
+    for (size_t i = 0; i < Size-Temp[Size-1]; i++)
+        NewArr.Arr[i] = Temp[i];
+
+    //? Free allocated Temp
+    free (Temp);
+
+    //! Needs to be de-allocated
+    return NewArr;
+}
+
+
+//? AES-CBC implementation
+
+ByteArr AES_CBC_Enc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* IV)
+{
+    if (Size == 0)
+        return (ByteArr){NULL, 0};
+
+    ByteArr NewArr;
+    uint8_t PadByte = 16 - (Size%16);
+    NewArr.Size = PadByte + Size;
+    NewArr.Arr = malloc(NewArr.Size);
+
+    for (size_t i = 0; i < Size; i++)
+        NewArr.Arr[i] = Plaintext[i];
+        
+    for (size_t i = Size; i < NewArr.Size; i++)
+        NewArr.Arr[i] = PadByte;
+
+    for (int i = 0; i < 16; i++)
+        NewArr.Arr[i] ^= IV[i];
+
+    for (size_t i = 0; i < NewArr.Size - 16; i+=16)
+    {
+        AES_STD_Enc(NewArr.Arr+i, Key);
+        for (int j = 0; j < 16; j++)
+            NewArr.Arr[i+16 + j] ^= NewArr.Arr[i + j];
+    }
+    // Final one without CBC function
+    AES_STD_Enc(NewArr.Arr+NewArr.Size-16, Key);
+
+    //! Needs to be de-allocated
+    return NewArr;
+}
+
+ByteArr AES_CBC_Dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key, const uint8_t* IV)
+{
+    if (Size == 0 || Size%16 != 0)
+        return (ByteArr){NULL, 0};
+
+    //? Copy over Ciphertext
+    uint8_t* Temp = malloc(Size);
+    for (size_t i = 0; i < Size; i++)
+        Temp[i] = Ciphertext[i];
+
+    //? Decrypt Temp, 16 bytes at a time
+    for (size_t i = 0; i < Size; i+=16)
+    {
+        AES_STD_Dec(Temp + i, Key);
+    }
+
+    //? XOR each Ciphertext
+    for (int i = 0; i < 16; i++)
+        Temp[i] ^= IV[i];
+    for (size_t i = 16; i < Size; i++)
+        Temp[i] ^= Ciphertext[i-16];
+
+    //? Declare ByteArr Struct
+    ByteArr NewArr;
+    NewArr.Size = Size - Temp[Size - 1];
+    NewArr.Arr = malloc(NewArr.Size);
+
+    //? Copy over Temp to ByteArr
+    for (size_t i = 0; i < 32; i++)
+        NewArr.Arr[i] = Temp[i];
+
+    //? Free allocated Temp
+    free(Temp);
+    
+    //! Needs to be de-allocated
+    return NewArr;
+}
+
+//? AES-GCM implementation
+
+ByteArr AES_GCM_Enc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* IV)
+{
+    //! Seems to require galois field protocols.
+    return (ByteArr){NULL, 0};
+}
+
+ByteArr AES_GCM_Dec(const uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* IV)
+{
+    //! Function here
+    return (ByteArr){NULL, 0};
+}
+
+
+//* Static functions
+//? Key Functions
 
 static void AddRoundKey(uint8_t* State, const uint8_t* EKey)
 {

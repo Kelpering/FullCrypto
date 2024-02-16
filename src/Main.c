@@ -12,7 +12,20 @@ void PrintInfo(uint8_t* Array, size_t Size, bool isString);
 
 int main()
 {
-    // Main serves as a playground for now.
+    uint8_t Data[] = "HELLO WORLD!";
+    uint8_t* IV = AES_IVGen(time(NULL));
+    uint8_t* Key = AES_KeyGen256(time(NULL));
+
+    PrintInfo(Data, sizeof(Data), true);
+
+    ByteArr EncData = AES_CBC_Enc(Data, sizeof(Data), Key, IV);
+    PrintInfo(EncData.Arr, EncData.Size, false);
+    
+    ByteArr DecData = AES_CBC_Dec(EncData.Arr, EncData.Size, Key, IV);
+    PrintInfo(DecData.Arr, DecData.Size, true);
+
+    free(EncData.Arr);
+    free(DecData.Arr);
     return 0;
 }
 

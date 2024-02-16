@@ -80,13 +80,13 @@ int main()
     uint8_t* IV = IVGen(time(NULL));
     uint8_t* Key = AESKeyGen256(time(NULL));
 
-    PrintInfo(Data, sizeof(Data), true);
+    // PrintInfo(Data, sizeof(Data), true);
 
     ByteArr EncData = CBCAESEnc(Data, sizeof(Data), Key, IV);
-    PrintInfo(EncData.Arr, EncData.Size, false);
+    // PrintInfo(EncData.Arr, EncData.Size, false);
     
     ByteArr DecData = CBCAESDec(EncData.Arr, EncData.Size, Key, IV);
-    PrintInfo(DecData.Arr, DecData.Size, true);
+    // PrintInfo(DecData.Arr, DecData.Size, true);
 
     free(EncData.Arr);
     free(DecData.Arr);
