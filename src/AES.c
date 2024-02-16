@@ -285,12 +285,22 @@ ByteArr AES_CBC_Dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key, 
 ByteArr AES_GCM_Enc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* IV)
 {
     //! Seems to require galois field protocols.
+    //! Specification works on bits, so be prepared for some weird numbers
+    //! Plaintext, additional (unencrypted) data, and IV (12 bytes)
+    //! Should be able to run on just Additional data (GMAC) or both, or just plaintext.
+    //! Plaintext length cannot exceed 2^39-256 (bits) ~60 GB.
+    //! Additional data length cannot exceed 2^64-1 (bits)
+    //! to restrict these values easily, make each size as uint32_t (this is below the maximum)
+
+    //! Ciphertext is returned the same length as plaintext, this allows for easier returns.
+    //! We also return an authentication tag, this might be returned directly
+    //! tag is also a set size (128, 120, 112, 104, or 96)
     return (ByteArr){NULL, 0};
 }
 
 ByteArr AES_GCM_Dec(const uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* IV)
 {
-    //! Function here
+    //! We must return FAIL here if there is an error (aka tampering/mis-match)
     return (ByteArr){NULL, 0};
 }
 
