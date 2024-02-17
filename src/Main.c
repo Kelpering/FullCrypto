@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include "../include/AES.h"
-// #include "../include/FullCrypto.h"
 #include "../include/Base64.h"
 #include "../include/MD5.h"
 

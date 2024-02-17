@@ -41,8 +41,8 @@ void AES_STD_Enc(uint8_t* Plaintext, const uint8_t* Key)
     AddRoundKey(State, (EKey+(14*16)));
 
     //? Clear and de-allocate Expanded Key
-    // for (int i = 0; i < 60; i++)
-    //     EKey[i] = 0;
+    for (int i = 0; i < 240; i++)
+        EKey[i] = 0;
     free(EKey);
 
     //? Fill Data sideways
@@ -103,8 +103,8 @@ void AES_STD_Dec(uint8_t* Ciphertext, const uint8_t* Key)
     AddRoundKey(State, EKey + 0);
     
     //? Clear and de-allocate Expanded Key
-    // for (int i = 0; i < 30; i++)
-    //     EKey[i] = 0;
+    for (int i = 0; i < 240; i++)
+        EKey[i] = 0;
     free(EKey);     //! Free here is SegFaulting somehow, although I am unsure why.
 
     //? Fill Data sideways
@@ -220,15 +220,14 @@ ByteArr AES_CBC_Enc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key, c
     NewArr.Size = PadByte + Size;
     NewArr.Arr = malloc(NewArr.Size);
 
+    //? Fill NewArr with relevant data and padding.
     for (size_t i = 0; i < Size; i++)
         NewArr.Arr[i] = Plaintext[i];
-        
     for (size_t i = Size; i < NewArr.Size; i++)
         NewArr.Arr[i] = PadByte;
 
     for (int i = 0; i < 16; i++)
         NewArr.Arr[i] ^= IV[i];
-
     for (size_t i = 0; i < NewArr.Size - 16; i+=16)
     {
         AES_STD_Enc(NewArr.Arr+i, Key);
@@ -254,9 +253,7 @@ ByteArr AES_CBC_Dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key, 
 
     //? Decrypt Temp, 16 bytes at a time
     for (size_t i = 0; i < Size; i+=16)
-    {
         AES_STD_Dec(Temp + i, Key);
-    }
 
     //? XOR each Ciphertext
     for (int i = 0; i < 16; i++)
@@ -280,17 +277,38 @@ ByteArr AES_CBC_Dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key, 
     return NewArr;
 }
 
+
 //? AES-GCM implementation
 
 ByteArr AES_GCM_Enc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* IV)
 {
     //! Seems to require galois field protocols.
-    //! Specification works on bits, so be prepared for some weird numbers
-    //! Plaintext, additional (unencrypted) data, and IV (12 bytes)
+    //! Specification works on bits, so be prepared for some weird numbers. Assume LENS/LENGTHS are in bits
+    //! Plaintext, additional (unencrypted but verified) data, and IV (12 bytes)
     //! Should be able to run on just Additional data (GMAC) or both, or just plaintext.
-    //! Plaintext length cannot exceed 2^39-256 (bits) ~60 GB.
-    //! Additional data length cannot exceed 2^64-1 (bits)
-    //! to restrict these values easily, make each size as uint32_t (this is below the maximum)
+    //! There are bit length restrictions. Conversions will be required for Bit -> Byte
+
+    //? GInc32 function
+    //* Inc func makes less sense.
+
+    //? GHASH Func (Works on X & [H] Hash Subkey) (Key is probably the same as symmetric key)
+    //* Len of X must be a multiple of 128
+    //* Space X into blocks of 128 bits
+    //* Y[0] == 0
+    //* For i = 1 to # of blocks. Y[i] == GMul((Y[i-1] ^ X[i]), H)
+    //! I suspect that GMul is used here, do have to confirm.
+    //* Return Y[Last]
+
+    //? GCTR Func (Works on X, ICB, & Key) (Key is probably the same as symmetric key)
+    //* Size returned is bitSize/128 (round up) so number of divisible blocks. + 1 if there is an undivisible block. Padding is not ALWAYS required here.
+    //* ICB (initial counter block) is probably an IV or nonce.
+
+    //* Seperate X into blocks, final one MIGHT be incomplete
+    //* Generate CB (Counter blocks) such that CB[0] == ICB & CB[...] = Inc32(PREV CB) (Create Inc32 func)
+    //* Generate blocks Y, for 1 to length - 1, Y[i] == X[i] ^ AES_STD(CB[i], Key);
+    //* Last Y (incomplete X block) == X[Last] ^ (The first(MSB) [Len of X] bits of AES_STD(CB[Last], Key))
+    //* This seems to leave the last Y block still incomplete
+    //* Return Y (same size as X?)
 
     //! Ciphertext is returned the same length as plaintext, this allows for easier returns.
     //! We also return an authentication tag, this might be returned directly
