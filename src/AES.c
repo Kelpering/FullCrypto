@@ -514,6 +514,33 @@ static uint8_t GInv(uint8_t Byte)
     return GMul(b,b);
 }
 
+static void GBlockMul(uint8_t* X, uint8_t* Y)
+{
+    // R = 0b11100001 concat 120 bits of 0 == 128-bit
+    uint8_t R[16] = {0xE1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    
+    // Z = 0;
+    uint8_t Z[16] = {0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0};
+    
+    // V = X;
+    uint8_t V[16];
+    for (int i = 0; i < 16; i++)
+        V[i] = X[i];
+    
+    for (int i = 0; i < 128; i++)
+    {
+        if (Y[i] == 1)
+        {
+            for (int j = 0; j < 16; j++)
+                Z[j] ^= V[j];
+        }
+        // V = V*P; ???
+    }
+    // X & Y are 128-bit numbers, represented by 8, 16-byte arrays
+    // Multiply X by Y
+    return; 
+}
+
 static uint8_t SBoxFunc(uint8_t Byte)
 {
     uint8_t Inv = GInv(Byte);
