@@ -514,31 +514,57 @@ static uint8_t GInv(uint8_t Byte)
     return GMul(b,b);
 }
 
-static void GBlockMul(uint8_t* X, uint8_t* Y)
+static void GBlockMul(uint8_t* X, uint8_t* Y, uint8_t* Result)
 {
-    // R = 0b11100001 concat 120 bits of 0 == 128-bit
-    uint8_t R[16] = {0xE1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    // // R = 0b11100001 concat 120 bits of 0 == 128-bit
+    // uint8_t R[16] = {0xE1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     
-    // Z = 0;
-    uint8_t Z[16] = {0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0};
+    // // Z = 0;
+    // uint8_t Z[16] = {0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0};
     
-    // V = X;
-    uint8_t V[16];
-    for (int i = 0; i < 16; i++)
-        V[i] = X[i];
+    // // V = X;
+    // uint8_t V[16];
+    // for (int i = 0; i < 16; i++)
+    //     V[i] = X[i];
     
-    for (int i = 0; i < 128; i++)
-    {
-        if (Y[i] == 1)
-        {
-            for (int j = 0; j < 16; j++)
-                Z[j] ^= V[j];
-        }
-        // V = V*P; ???
-    }
+    // for (int i = 0; i < 128; i++)
+    // {
+    //     if (Y[i] == 1)
+    //     {
+    //         for (int j = 0; j < 16; j++)
+    //             Z[j] ^= V[j];
+    //     }
+    //     // V = V*P; ???
+    // }
     // X & Y are 128-bit numbers, represented by 8, 16-byte arrays
     // Multiply X by Y
-    return; 
+
+    //* Remake function above (unfinished). Use new #define directive
+    //* BitArr128() #define should calculate the correct bit to use. (probably)
+    //* [[]] is bit array
+    //* The X, Y, and Result are unknown format, assumed little-endian-like
+    
+    //* X, Y, Z are all GF(2^128). I believe this means they are 128-bit numbers in the register.
+    //* These should be arrays of uint8_t[16]
+    //* V is probably also 128-bit, just a copy of X.
+    //* These i's are probably Bit Arrays
+    //* Just variable will have to be the entire array.
+    //* We might have to make a specialized rightshift function for these byte / bit arrays
+    //* Maybe throw the function into the for loop
+
+    // Z ← 0, V ← X
+    // for i = 0 to 127 do
+    // if Yi = 1 then
+    // Z ← Z ⊕ V
+    // end if
+    // if V127 = 0 then
+    // V ← rightshift(V)
+    // else
+    // V ← rightshift(V) ⊕ R
+    // end if
+    // end for
+    // return Z
+    return;
 }
 
 static uint8_t SBoxFunc(uint8_t Byte)

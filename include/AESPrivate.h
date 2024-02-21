@@ -10,6 +10,17 @@
 /// @param shift Number of bits to shift by.
 #define ROTL8(x, shift) ((x<<shift) | (x >> (8 - shift)))
 
+//! Access the array 0-15, then select the bit with shifts
+//! Bit is anywhere from 0-127
+//! Modulo will be of great importance
+//! This might not work if the number is represented differently.
+//! I believe this function assumes Little-Endian? representation, like in C
+
+/// @brief Accesses x as if it was a bit array, instead of a byte array. Only works with 128-bit number representations.
+/// @param x An array of 16 bytes.
+/// @param bit The bit to access.
+#define BitArr128(x, bit) ((x[bit>>3] >> (bit%16)) & 1)
+
 /// @brief SBox array to allow for much faster encryption.
 static uint8_t SBox[256];
 
