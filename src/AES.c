@@ -288,24 +288,9 @@ ByteArr AES_GCM_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t
     //? Authentication Tag = ?-bits/bytes
     // Required funcs:
     // GCTR
-    // GHash
+    //? GHash (Must be tested in the future)
     //* GInc32
     //* GBlockMul
-    uint8_t HashSubkey[16] = {0x73, 0xA2, 0x3D, 0x80, 0x12, 0x1D, 0xe2, 0xd5, 0xa8, 0x50, 0x25, 0x3f, 0xcf, 0x43, 0x12, 0x0e};
-    uint8_t Block[32] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
-//? Block
-//     D609B1F056637A0D46DF998D88E5222A
-// B2C2846512153524C0895E8108000F10
-// 1112131415161718191A1B1C1D1E1F20
-// 2122232425262728292A2B2C2D2E2F30
-// 313233340001
-//? Output
-// 1BDA7DB505D8A165264986A703A6920D
-
-    uint8_t Output[16];
-    GHash(HashSubkey, Block, sizeof(Block), Output);
-    for (int i = 0; i < 16; i++)
-        printf("0x%.2X ", Output[i]);
     return (ByteArr){NULL, 0};
 }
 
@@ -557,22 +542,10 @@ static void GBlockMul(uint8_t* X, uint8_t* Y, uint8_t* Result)
 }
 
 static void GHash(uint8_t* H, uint8_t* Block, size_t BlockNum, uint8_t* Output)
-{
-    // Block is a multiple of 128 bits (16 bytes)
-    // Looks to crush (hash) Block (of variable size) into one 128-bit block.
+{   
+    //* Allocates Y and initializes to '0'
+    uint8_t* Y = calloc(BlockNum, 16);
 
-    // Block here is a uint128_t array.
-    //? x1, x2, x3 -> X Block = Block[0] || Block[1]
-    //? y0 = 128 0 bits
-    //? For i = 1 to last X
-    //? yi = (y(i-1) ^ xi) BlockMul (H)
-    
-    //? Y0 = 0^128
-    uint8_t* Y = malloc(BlockNum * 16);
-    for (int i = 0; i < 16; i++)
-        Y[i] = 0;
-
-    // >> 7 should be div 128 but faster
     for (int i = 1; i < BlockNum; i++)
     {
         //* Y[i] = Y[i-1] ^ X[i]
@@ -583,12 +556,10 @@ static void GHash(uint8_t* H, uint8_t* Block, size_t BlockNum, uint8_t* Output)
         GBlockMul(&Y[i*16], H, &Y[i*16]);
     }
     
-    // Return this as uint8_t[16]
-    //! No clue if this is correct.
-    //! How to return?
-    Y[(BlockNum-1)*16];
+    // Return and Free Y
     for (int j = 0; j < 16; j ++)
         Output[j] = Y[(BlockNum-1)*16+j];
+    free(Y);
     return;
 }
 
