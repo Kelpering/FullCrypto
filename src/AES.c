@@ -563,14 +563,37 @@ static void GHash(uint8_t* H, uint8_t* Block, size_t BlockNum, uint8_t* Output)
     return;
 }
 
-static void GCTR(uint8_t* Plaintext, size_t Size, const uint8_t* Key)
+static void GCTR(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* ICB)
 {
     //? Pre-approved cipher (AES)
     //? Key (256-bit AES key)
     //? Initial Counter Block (modified IV?)
     //? Bit string X (arbitrary length) (now needs size) (make byte)
     //? Output: Y of length len(X) (can overwrite X?)
+
+    // If empty, return 0 (might be automatic, check later).
+    if (Size == 0)
+        return;
+
+    // Calculate n (Number of blocks (16 bytes or 128-bits))
+    if (Size%16 != 0)
+        Size+=16;
+    Size >>= 4;
+
+    //X1 = Plaintext[(1)*16+j]
+
+    // CB1 = ICB
+    uint8_t CB[16];
+    for (int i = 0; i < 16; i++)
+        CB[i] = ICB[i];
+
+    //for (i = 2 -> n) CB[i] = GInc32(CB[i-1])
+    //* Might be able to skip having another array and just reformat CB every time.
     
+
+
+
+
     return;
 }
 
