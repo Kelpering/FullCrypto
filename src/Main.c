@@ -11,7 +11,7 @@
 void PrintInfo(uint8_t* Array, size_t Size, bool isString);
 
 int main()
-{
+{   
     uint8_t Data[] = "HELLO WORLD!";
     uint8_t* IV = AES_IVGen(time(NULL));
     uint8_t* Key = AES_KeyGen256(time(NULL));

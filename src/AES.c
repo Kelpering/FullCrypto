@@ -280,39 +280,16 @@ ByteArr AES_CBC_Dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key, 
 
 //? AES-GCM implementation
 
-ByteArr AES_GCM_Enc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* IV)
+ByteArr AES_GCM_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV)
 {
-    //! Seems to require galois field protocols.
-    //! Specification works on bits, so be prepared for some weird numbers. Assume LENS/LENGTHS are in bits
-    //! Plaintext, additional (unencrypted but verified) data, and IV (12 bytes)
-    //! Should be able to run on just Additional data (GMAC) or both, or just plaintext.
-    //! There are bit length restrictions. Conversions will be required for Bit -> Byte
-
-    //? GInc32 function
-    //* Inc func makes less sense.
-
-    //? GHASH Func (Works on X & [H] Hash Subkey) (Key is probably the same as symmetric key)
-    //* Len of X must be a multiple of 128
-    //* Space X into blocks of 128 bits
-    //* Y[0] == 0
-    //* For i = 1 to # of blocks. Y[i] == GMul((Y[i-1] ^ X[i]), H)
-    //! I suspect that GMul is used here, do have to confirm.
-    //* Return Y[Last]
-
-    //? GCTR Func (Works on X, ICB, & Key) (Key is probably the same as symmetric key)
-    //* Size returned is bitSize/128 (round up) so number of divisible blocks. + 1 if there is an undivisible block. Padding is not ALWAYS required here.
-    //* ICB (initial counter block) is probably an IV or nonce.
-
-    //* Seperate X into blocks, final one MIGHT be incomplete
-    //* Generate CB (Counter blocks) such that CB[0] == ICB & CB[...] = Inc32(PREV CB) (Create Inc32 func)
-    //* Generate blocks Y, for 1 to length - 1, Y[i] == X[i] ^ AES_STD(CB[i], Key);
-    //* Last Y (incomplete X block) == X[Last] ^ (The first(MSB) [Len of X] bits of AES_STD(CB[Last], Key))
-    //* This seems to leave the last Y block still incomplete
-    //* Return Y (same size as X?)
-
-    //! Ciphertext is returned the same length as plaintext, this allows for easier returns.
-    //! We also return an authentication tag, this might be returned directly
-    //! tag is also a set size (128, 120, 112, 104, or 96)
+    //? IV = 12 bytes
+    //? Ciphertext = ? (might be able to overwrite Plaintext)
+    //? Authentication Tag = ?-bits/bytes
+    // Required funcs:
+    // GCTR
+    // GHash
+    //* GInc32
+    //* GBlockMul
     return (ByteArr){NULL, 0};
 }
 
@@ -514,56 +491,55 @@ static uint8_t GInv(uint8_t Byte)
     return GMul(b,b);
 }
 
+static void GInc32(uint8_t* Block)
+{
+    // Reverses the endian of Block (as a 128-bit number) to allow for proper increment.
+    uint32_t Temp = (Block[12] << 24) | (Block[13] << 16) | (Block[14] << 8) | Block[15];
+    Temp++;
+    Block[12] = (Temp >> 24) & 0xFF;
+    Block[13] = (Temp >> 16) & 0xFF;
+    Block[14] = (Temp >> 8) & 0xFF;
+    Block[15] = Temp & 0xFF;
+    return;
+}
+
 static void GBlockMul(uint8_t* X, uint8_t* Y, uint8_t* Result)
 {
-    // // R = 0b11100001 concat 120 bits of 0 == 128-bit
-    // uint8_t R[16] = {0xE1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    
-    // // Z = 0;
-    // uint8_t Z[16] = {0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0};
-    
-    // // V = X;
-    // uint8_t V[16];
-    // for (int i = 0; i < 16; i++)
-    //     V[i] = X[i];
-    
-    // for (int i = 0; i < 128; i++)
-    // {
-    //     if (Y[i] == 1)
-    //     {
-    //         for (int j = 0; j < 16; j++)
-    //             Z[j] ^= V[j];
-    //     }
-    //     // V = V*P; ???
-    // }
-    // X & Y are 128-bit numbers, represented by 8, 16-byte arrays
-    // Multiply X by Y
+    //? Each block is a uint8_t[16] array, which represents a 128-bit number.
+    //* X, Y, Result, and V are all 128-bit blocks
+    for (int i = 0 ; i < 16; i++)
+        Result[i] = 0;
+    uint8_t V[16] = {X[0],X[1],X[2],X[3],X[4],X[5],X[6],X[7],X[8],X[9],X[10],X[11],X[12],X[13],X[14],X[15]};
 
-    //* Remake function above (unfinished). Use new #define directive
-    //* BitArr128() #define should calculate the correct bit to use. (probably)
-    //* [[]] is bit array
-    //* The X, Y, and Result are unknown format, assumed little-endian-like
-    
-    //* X, Y, Z are all GF(2^128). I believe this means they are 128-bit numbers in the register.
-    //* These should be arrays of uint8_t[16]
-    //* V is probably also 128-bit, just a copy of X.
-    //* These i's are probably Bit Arrays
-    //* Just variable will have to be the entire array.
-    //* We might have to make a specialized rightshift function for these byte / bit arrays
-    //* Maybe throw the function into the for loop
+    for (int i = 0; i < 128; i++)
+    {
+        if (BitArr128(Y, i) == 1)
+            for (int i = 0 ; i < 16; i++)
+                Result[i] ^= V[i];
 
-    // Z ← 0, V ← X
-    // for i = 0 to 127 do
-    // if Yi = 1 then
-    // Z ← Z ⊕ V
-    // end if
-    // if V127 = 0 then
-    // V ← rightshift(V)
-    // else
-    // V ← rightshift(V) ⊕ R
-    // end if
-    // end for
-    // return Z
+        if (BitArr128(V, 127) == 0)
+        {            
+            for (int i = 15; i > 0; i--)
+                V[i] = ((V[i-1] & 1) << 7) | (V[i] >> 1);
+            V[0] = (V[0] >> 1);
+        }
+        else
+        {
+            for (int i = 15; i > 0; i--)
+                V[i] = ((V[i-1] & 1) << 7) | (V[i] >> 1);
+            V[0] = (V[0] >> 1);
+            
+            // V ^= R
+            V[0] ^= 0xE1;
+        }
+    }
+    return;
+}
+
+static void GHash(uint8_t* H, uint8_t* Block, size_t Size)
+{
+    // Block is a multiple of 128 bits (16 bytes)
+    // Looks to crush (hash) Block (of variable size) into one 128-bit block.
     return;
 }
 

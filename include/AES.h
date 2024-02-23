@@ -53,6 +53,16 @@ ByteArr AES_CBC_Enc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key, c
 /// @note Will return NULL pointer and a size of 0 if invalid.
 ByteArr AES_CBC_Dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key, const uint8_t* IV);
 
+/// @brief test
+/// @param Plaintext Plaintext
+/// @param PSize Plaintext Size
+/// @param AAD Additional Authenticated Data
+/// @param ASize AAD size
+/// @param Key 256-bit key (32 byte)
+/// @param IV 96-bit IV (12 byte)
+/// @returns test
+ByteArr AES_GCM_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV);
+
 
 //* Non-standard generator functions
 
