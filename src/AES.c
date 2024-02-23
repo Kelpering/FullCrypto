@@ -576,24 +576,47 @@ static void GCTR(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint
         return;
 
     // Calculate n (Number of blocks (16 bytes or 128-bits))
+    size_t BlockNum = Size;
     if (Size%16 != 0)
-        Size+=16;
-    Size >>= 4;
+        BlockNum+=16;
+    BlockNum >>= 4;
 
     //X1 = Plaintext[(1)*16+j]
 
     // CB1 = ICB
     uint8_t CB[16];
+    uint8_t Temp[16];
     for (int i = 0; i < 16; i++)
         CB[i] = ICB[i];
 
     //for (i = 2 -> n) CB[i] = GInc32(CB[i-1])
     //* Might be able to skip having another array and just reformat CB every time.
-    
+   for (int i = 0; i < BlockNum - 1; i++)
+   {
+       for (int j = 0; j < 16; j++)
+            Temp[j] = CB[j];
+       AES_STD_Enc(Temp, Key);
 
-
-
-
+       for (int j = 0; j < 16; j++)
+            Plaintext[i*16+j] ^= Temp[j];
+       GInc32(CB);
+       //* CB = Inc32(CB);
+       // Plaintext[i] = Plaintext[i] ^ AES(CB[i], Key);
+       // CB is 16 bytes, but needs to remain
+       // Key is provided
+       //! AES_STD_Enc(CB, Key);
+       // Put curr CB into variable array, Encrypt that, then plaintext ^= that.
+       // Plaintext is unable to be used as it has data in it.
+   } 
+   //* Final (or only) block.
+   for (int j = 0; j < 16; j++)
+       Temp[j] = CB[j];
+   AES_STD_Enc(Temp, Key);
+   for (int j = 0; j < Size%16; j++)
+        Plaintext[(BlockNum-1)*16+j] ^= Temp[j];
+  
+   // Below might be (but isn't always) less than 16 bytes.
+   // Plaintext[last]: Xor the last (16 or less) bytes with the same number of bytes AES(CB[last], Key) (Most Significant Bytes)
     return;
 }
 
