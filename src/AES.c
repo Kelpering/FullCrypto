@@ -570,7 +570,7 @@ static void GCTR(uint8_t* Plaintext, size_t Size, const uint8_t* Key)
     //? Initial Counter Block (modified IV?)
     //? Bit string X (arbitrary length) (now needs size) (make byte)
     //? Output: Y of length len(X) (can overwrite X?)
-    //? 
+    
     return;
 }
 
