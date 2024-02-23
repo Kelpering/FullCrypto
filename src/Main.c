@@ -12,20 +12,25 @@ void PrintInfo(uint8_t* Array, size_t Size, bool isString);
 
 int main()
 {   
-    uint8_t Data[] = "HELLO WORLD!";
-    uint8_t* IV = AES_IVGen(time(NULL));
+    uint8_t Plaintext[16] = {1,23,34,51,236,55,34,4,4,4,4,2,32,12,31,12};
     uint8_t* Key = AES_KeyGen256(time(NULL));
+    uint8_t IV[12] = {1,2,3,4,5,6,7,8,9,10,11,12};
 
-    PrintInfo(Data, sizeof(Data), true);
+    AES_GCM_Enc(Plaintext, sizeof(Plaintext), NULL, 0, Key, IV);
+    // uint8_t Data[] = "HELLO WORLD!";
+    // uint8_t* IV = AES_IVGen(time(NULL));
+    // uint8_t* Key = AES_KeyGen256(time(NULL));
 
-    ByteArr EncData = AES_CBC_Enc(Data, sizeof(Data), Key, IV);
-    PrintInfo(EncData.Arr, EncData.Size, false);
+    // PrintInfo(Data, sizeof(Data), true);
+
+    // ByteArr EncData = AES_CBC_Enc(Data, sizeof(Data), Key, IV);
+    // PrintInfo(EncData.Arr, EncData.Size, false);
     
-    ByteArr DecData = AES_CBC_Dec(EncData.Arr, EncData.Size, Key, IV);
-    PrintInfo(DecData.Arr, DecData.Size, true);
+    // ByteArr DecData = AES_CBC_Dec(EncData.Arr, EncData.Size, Key, IV);
+    // PrintInfo(DecData.Arr, DecData.Size, true);
 
-    free(EncData.Arr);
-    free(DecData.Arr);
+    // free(EncData.Arr);
+    // free(DecData.Arr);
     return 0;
 }
 

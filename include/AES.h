@@ -63,7 +63,6 @@ ByteArr AES_CBC_Dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key, 
 /// @returns test
 ByteArr AES_GCM_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV);
 
-
 //* Non-standard generator functions
 
 /// @brief Generates a random 32-byte key for use in AES-256 functions.

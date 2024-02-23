@@ -1,5 +1,6 @@
 #include "../include/AES.h"
 #include "../include/AESPrivate.h"
+#include <stdio.h>
 
 
 //* Public functions
@@ -290,6 +291,21 @@ ByteArr AES_GCM_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t
     // GHash
     //* GInc32
     //* GBlockMul
+    uint8_t HashSubkey[16] = {0x73, 0xA2, 0x3D, 0x80, 0x12, 0x1D, 0xe2, 0xd5, 0xa8, 0x50, 0x25, 0x3f, 0xcf, 0x43, 0x12, 0x0e};
+    uint8_t Block[32] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
+//? Block
+//     D609B1F056637A0D46DF998D88E5222A
+// B2C2846512153524C0895E8108000F10
+// 1112131415161718191A1B1C1D1E1F20
+// 2122232425262728292A2B2C2D2E2F30
+// 313233340001
+//? Output
+// 1BDA7DB505D8A165264986A703A6920D
+
+    uint8_t Output[16];
+    GHash(HashSubkey, Block, sizeof(Block), Output);
+    for (int i = 0; i < 16; i++)
+        printf("0x%.2X ", Output[i]);
     return (ByteArr){NULL, 0};
 }
 
@@ -493,7 +509,7 @@ static uint8_t GInv(uint8_t Byte)
 
 static void GInc32(uint8_t* Block)
 {
-    // Reverses the endian of Block (as a 128-bit number) to allow for proper increment.
+    //* Reverses the endian of Block (as a 128-bit number) to allow for proper increment.
     uint32_t Temp = (Block[12] << 24) | (Block[13] << 16) | (Block[14] << 8) | Block[15];
     Temp++;
     Block[12] = (Temp >> 24) & 0xFF;
@@ -506,48 +522,41 @@ static void GInc32(uint8_t* Block)
 static void GBlockMul(uint8_t* X, uint8_t* Y, uint8_t* Result)
 {
     //? Each block is a uint8_t[16] array, which represents a 128-bit number.
-    //* X, Y, Result, and V are all 128-bit blocks
-    //! Reformat comments
-    //! Rename variables XCpy & YCpy
-    //! RETEST THIS FUNC
-    //* This should allow for any variable to be the result var without conflict.
-    // uint8_t V[16] = {X[0],X[1],X[2],X[3],X[4],X[5],X[6],X[7],X[8],X[9],X[10],X[11],X[12],X[13],X[14],X[15]};
-    // uint8_T W[16] = {Y[0],Y[1],Y[2],Y[3],Y[4],Y[5],Y[6],Y[7],Y[8],Y[9],Y[10],Y[11],Y[12],Y[13],Y[14],Y[15]};
-    uint8_t V[16];
-    uint8_T W[16];
+    uint8_t XCpy[16];
+    uint8_t YCpy[16];
     for (int i = 0 ; i < 16; i++)
     {
-        V[i] = X[i];
-        W[i] = Y[i];
+        XCpy[i] = X[i];     //* V
+        YCpy[i] = Y[i];     //* Y
         Result[i] = 0;
     }
 
     for (int i = 0; i < 128; i++)
     {
-        if (BitArr128(W, i) == 1)
+        if (BitArr128(YCpy, i) == 1)
             for (int i = 0 ; i < 16; i++)
-                Result[i] ^= V[i];
+                Result[i] ^= XCpy[i];
 
-        if (BitArr128(V, 127) == 0)
+        if (BitArr128(XCpy, 127) == 0)
         {            
             for (int i = 15; i > 0; i--)
-                V[i] = ((V[i-1] & 1) << 7) | (V[i] >> 1);
-            V[0] = (V[0] >> 1);
+                XCpy[i] = ((XCpy[i-1] & 1) << 7) | (XCpy[i] >> 1);
+            XCpy[0] = (XCpy[0] >> 1);
         }
         else
         {
             for (int i = 15; i > 0; i--)
-                V[i] = ((V[i-1] & 1) << 7) | (V[i] >> 1);
-            V[0] = (V[0] >> 1);
+                XCpy[i] = ((XCpy[i-1] & 1) << 7) | (XCpy[i] >> 1);
+            XCpy[0] = (XCpy[0] >> 1);
             
-            // V ^= R
-            V[0] ^= 0xE1;
+            //* V ^= R
+            XCpy[0] ^= 0xE1;
         }
     }
     return;
 }
 
-static void GHash(uint8_t* H, uint8_t* Block, size_t Size)
+static void GHash(uint8_t* H, uint8_t* Block, size_t BlockNum, uint8_t* Output)
 {
     // Block is a multiple of 128 bits (16 bytes)
     // Looks to crush (hash) Block (of variable size) into one 128-bit block.
@@ -559,17 +568,27 @@ static void GHash(uint8_t* H, uint8_t* Block, size_t Size)
     //? yi = (y(i-1) ^ xi) BlockMul (H)
     
     //? Y0 = 0^128
-    uint8_t* Y = malloc(Size);
+    uint8_t* Y = malloc(BlockNum * 16);
     for (int i = 0; i < 16; i++)
         Y[i] = 0;
 
     // >> 7 should be div 128 but faster
-    for (int i = 1; i < (Size >> 7); i++)
+    for (int i = 1; i < BlockNum; i++)
     {
-        // Y[i][] = (Y[i-1][]) ^ (X[i][])
-        // Y[i][] = GBlockMul(Y[i][], H, Y[i][])
-        // Verify that GBlockMul can output to the same var
+        //* Y[i] = Y[i-1] ^ X[i]
+        for (int j = 0; j < 16; j++)
+            Y[i*16+j] = Y[(i-1)*16+j] ^ Block[i*16+j];
+
+        //* Y[i] = (Y * X) (in GF(2^128))
+        GBlockMul(&Y[i*16], H, &Y[i*16]);
     }
+    
+    // Return this as uint8_t[16]
+    //! No clue if this is correct.
+    //! How to return?
+    Y[(BlockNum-1)*16];
+    for (int j = 0; j < 16; j ++)
+        Output[j] = Y[(BlockNum-1)*16+j];
     return;
 }
 

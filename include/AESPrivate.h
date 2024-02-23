@@ -94,6 +94,13 @@ static void GInc32(uint8_t* Block);
 /// @param Result The result, a uint8_t[16], overwritten.
 static void GBlockMul(uint8_t* X, uint8_t* Y, uint8_t* Result);
 
+/// @brief test
+/// @param H test
+/// @param Block test
+/// @param BlockNum test
+/// @param Output test
+static void GHash(uint8_t* H, uint8_t* Block, size_t BlockNum, uint8_t* Output);
+
 /// @brief Applies SBox[] to a Byte, but via calculations instead of an array.
 /// @returns SBox[Byte].
 static uint8_t SBoxFunc(uint8_t Byte);
