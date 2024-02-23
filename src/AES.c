@@ -507,13 +507,24 @@ static void GBlockMul(uint8_t* X, uint8_t* Y, uint8_t* Result)
 {
     //? Each block is a uint8_t[16] array, which represents a 128-bit number.
     //* X, Y, Result, and V are all 128-bit blocks
+    //! Reformat comments
+    //! Rename variables XCpy & YCpy
+    //! RETEST THIS FUNC
+    //* This should allow for any variable to be the result var without conflict.
+    // uint8_t V[16] = {X[0],X[1],X[2],X[3],X[4],X[5],X[6],X[7],X[8],X[9],X[10],X[11],X[12],X[13],X[14],X[15]};
+    // uint8_T W[16] = {Y[0],Y[1],Y[2],Y[3],Y[4],Y[5],Y[6],Y[7],Y[8],Y[9],Y[10],Y[11],Y[12],Y[13],Y[14],Y[15]};
+    uint8_t V[16];
+    uint8_T W[16];
     for (int i = 0 ; i < 16; i++)
+    {
+        V[i] = X[i];
+        W[i] = Y[i];
         Result[i] = 0;
-    uint8_t V[16] = {X[0],X[1],X[2],X[3],X[4],X[5],X[6],X[7],X[8],X[9],X[10],X[11],X[12],X[13],X[14],X[15]};
+    }
 
     for (int i = 0; i < 128; i++)
     {
-        if (BitArr128(Y, i) == 1)
+        if (BitArr128(W, i) == 1)
             for (int i = 0 ; i < 16; i++)
                 Result[i] ^= V[i];
 
@@ -540,6 +551,36 @@ static void GHash(uint8_t* H, uint8_t* Block, size_t Size)
 {
     // Block is a multiple of 128 bits (16 bytes)
     // Looks to crush (hash) Block (of variable size) into one 128-bit block.
+
+    // Block here is a uint128_t array.
+    //? x1, x2, x3 -> X Block = Block[0] || Block[1]
+    //? y0 = 128 0 bits
+    //? For i = 1 to last X
+    //? yi = (y(i-1) ^ xi) BlockMul (H)
+    
+    //? Y0 = 0^128
+    uint8_t* Y = malloc(Size);
+    for (int i = 0; i < 16; i++)
+        Y[i] = 0;
+
+    // >> 7 should be div 128 but faster
+    for (int i = 1; i < (Size >> 7); i++)
+    {
+        // Y[i][] = (Y[i-1][]) ^ (X[i][])
+        // Y[i][] = GBlockMul(Y[i][], H, Y[i][])
+        // Verify that GBlockMul can output to the same var
+    }
+    return;
+}
+
+static void GCTR(uint8_t* Plaintext, size_t Size, const uint8_t* Key)
+{
+    //? Pre-approved cipher (AES)
+    //? Key (256-bit AES key)
+    //? Initial Counter Block (modified IV?)
+    //? Bit string X (arbitrary length) (now needs size) (make byte)
+    //? Output: Y of length len(X) (can overwrite X?)
+    //? 
     return;
 }
 
