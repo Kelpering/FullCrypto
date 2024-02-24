@@ -338,20 +338,30 @@ ByteArr AES_GCM_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t
         ConcatHash[i+CurSize] = 0;
     CurSize += PPad;
 
+    // Convert byte to bit size
+    size_t TempASize = ASize * 8;
+    size_t TempPSize = PSize * 8;
+
     for (size_t i = 0; i < 8; i++)
-        ConcatHash[i+CurSize] = ((uint8_t*) &ASize)[7-i];
+        ConcatHash[i+CurSize] = ((uint8_t*) &TempASize)[7-i];
     CurSize += 8;
 
     for (size_t i = 0; i < 8; i++)
-        ConcatHash[i+CurSize] = ((uint8_t*) &PSize)[7-i];
+        ConcatHash[i+CurSize] = ((uint8_t*) &TempPSize)[7-i];
 
     for (int i = 0; i < ASize+PSize+APad+PPad+16; i++)
         printf("0x%.2X ", ConcatHash[i]);
 
     uint8_t Hash[16];
     printf("\n\n");
+    // uint8_t HTest[16] = {0x66, 0xe9, 0x4b, 0xd4, 0xef, 0x8a, 0x2c, 0x3b, 0x88, 0x4c, 0xfa, 0x59, 0xca, 0x34, 0x2b, 0x2e};
+    // GHash(HTest, NULL, 0, Hash);
     GHash(H, ConcatHash, (ASize+PSize+APad+PPad+16)>>4, Hash);
     GCTR(Hash, 16, Key, J);
+    //! No clue what the issue is, no intermediate results.
+    //! Either hack someone elses to output their results, or just continue guessing.
+    //! I can't find one flaw in my own program, as I understand it.
+    //! Bit size -> Byte size is fixed, so that isnt the issue.
 
     for (int i = 0; i < 16; i++)
         printf("0x%.2X ", Hash[i]);
