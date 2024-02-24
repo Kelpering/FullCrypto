@@ -12,11 +12,13 @@ void PrintInfo(uint8_t* Array, size_t Size, bool isString);
 
 int main()
 {   
-    uint8_t Plaintext[16] = {1,23,34,51,236,55,34,4,4,4,4,2,32,12,31,12};
-    uint8_t* Key = AES_KeyGen256(time(NULL));
-    uint8_t IV[12] = {1,2,3,4,5,6,7,8,9,10,11,12};
+    uint8_t Plaintext[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    // uint8_t AAD[0] = {};
+    uint8_t Key[32] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    uint8_t IV[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
     AES_GCM_Enc(Plaintext, sizeof(Plaintext), NULL, 0, Key, IV);
+    PrintInfo(Plaintext, sizeof(Plaintext), false);
     // uint8_t Data[] = "HELLO WORLD!";
     // uint8_t* IV = AES_IVGen(time(NULL));
     // uint8_t* Key = AES_KeyGen256(time(NULL));

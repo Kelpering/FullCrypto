@@ -101,6 +101,13 @@ static void GBlockMul(uint8_t* X, uint8_t* Y, uint8_t* Result);
 /// @param Output test
 static void GHash(uint8_t* H, uint8_t* Block, size_t BlockNum, uint8_t* Output);
 
+/// @brief test
+/// @param Plaintext test
+/// @param Size test
+/// @param Key test
+/// @param ICB test
+static void GCTR(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* ICB);
+
 /// @brief Applies SBox[] to a Byte, but via calculations instead of an array.
 /// @returns SBox[Byte].
 static uint8_t SBoxFunc(uint8_t Byte);

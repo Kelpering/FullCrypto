@@ -286,11 +286,76 @@ ByteArr AES_GCM_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t
     //? IV = 12 bytes
     //? Ciphertext = ? (might be able to overwrite Plaintext)
     //? Authentication Tag = ?-bits/bytes
-    // Required funcs:
-    // GCTR
+
+    //! Required funcs:
+    //* GCTR
     //? GHash (Must be tested in the future)
     //* GInc32
     //* GBlockMul
+
+    //* Zero block (encrypted)
+    uint8_t H[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    AES_STD_Enc(H, Key);
+
+    //* J (ICB), with GInc32 applied.
+    uint8_t J[16] = {IV[0],IV[1],IV[2],IV[3],IV[4],IV[5],IV[6],IV[7],IV[8],IV[9],IV[10],IV[11],0,0,0,2};
+
+    //* Encrypt Plaintext here via GCTR.
+    //! Need to test with 2+ blocks, incomplete blocks, etc.
+    GCTR(Plaintext, PSize, Key, J);
+
+    // u = 16 * ceil(PSize/16)-PSize | v = 16 * ceil(ASize/16)-ASize
+    // PSize = 16, u = 0; PSize = 17, u=47
+    // (16-x%16)%16
+
+    // ASize & PSize are already binary and 64 bits (uint64_t)
+    // || is concat here
+    // S = GHash_h(A || 0^v || C || 0^u || ASize || PSize)
+    // Combine AAD + 0^V + Plaintext + 0^U + ASize + PSize
+    // Malloc should allocate the correct amount of bytes to copy over.
+    //! Are the final two (Sizes) little or big endian?
+    //! Start with big, test, then repeat with little.
+    // uint8_t ConcatHash = malloc(ASize + (16-(ASize%16))%16 + PSize + (16-(PSize%16))%16 + 8 + 8);
+    uint8_t APad = (16-ASize%16)%16;
+    uint8_t PPad = (16-PSize%16)%16;
+    uint8_t* ConcatHash = malloc (ASize+PSize+APad+PPad+16);
+    size_t CurSize = 0;
+    
+    for (size_t i = 0; i < ASize; i++)
+        ConcatHash[i] = AAD[i];
+    CurSize += ASize;
+
+    for (size_t i = 0; i < APad; i++)
+        ConcatHash[i+CurSize] = 0;
+    CurSize += APad;
+    
+    // //* Plaintext here has already been encrypted.
+    for (size_t i = 0; i < PSize; i++)
+        ConcatHash[i+CurSize] = Plaintext[i];
+    CurSize += PSize;
+
+    for (size_t i = 0; i < PPad; i++)
+        ConcatHash[i+CurSize] = 0;
+    CurSize += PPad;
+
+    for (size_t i = 0; i < 8; i++)
+        ConcatHash[i+CurSize] = ((uint8_t*) &ASize)[7-i];
+    CurSize += 8;
+
+    for (size_t i = 0; i < 8; i++)
+        ConcatHash[i+CurSize] = ((uint8_t*) &PSize)[7-i];
+
+    for (int i = 0; i < ASize+PSize+APad+PPad+16; i++)
+        printf("0x%.2X ", ConcatHash[i]);
+
+    uint8_t Hash[16];
+    printf("\n\n");
+    GHash(H, ConcatHash, (ASize+PSize+APad+PPad+16)>>4, Hash);
+    GCTR(Hash, 16, Key, J);
+
+    for (int i = 0; i < 16; i++)
+        printf("0x%.2X ", Hash[i]);
+
     return (ByteArr){NULL, 0};
 }
 
@@ -543,6 +608,10 @@ static void GBlockMul(uint8_t* X, uint8_t* Y, uint8_t* Result)
 
 static void GHash(uint8_t* H, uint8_t* Block, size_t BlockNum, uint8_t* Output)
 {   
+    //! Check here, seems broken.
+    //! Somewhere for Tag, between GHash and GCTR is broken, hash hasnt passed tests. 
+    //! Also, when using no H, it seems like it spat back the encryption (makes no sense)
+    //! So here is where its broken.
     //* Allocates Y and initializes to '0'
     uint8_t* Y = calloc(BlockNum, 16);
 
@@ -608,12 +677,13 @@ static void GCTR(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint
        // Put curr CB into variable array, Encrypt that, then plaintext ^= that.
        // Plaintext is unable to be used as it has data in it.
    } 
-   //* Final (or only) block.
+   //* Final Block
    for (int j = 0; j < 16; j++)
        Temp[j] = CB[j];
    AES_STD_Enc(Temp, Key);
-   for (int j = 0; j < Size%16; j++)
+   for (int j = 0; j < Size-(Size%16); j++)
         Plaintext[(BlockNum-1)*16+j] ^= Temp[j];
+
   
    // Below might be (but isn't always) less than 16 bytes.
    // Plaintext[last]: Xor the last (16 or less) bytes with the same number of bytes AES(CB[last], Key) (Most Significant Bytes)
