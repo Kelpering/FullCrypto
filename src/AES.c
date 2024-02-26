@@ -192,6 +192,24 @@ ByteArr AES_ECB_Dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key)
 
 static void AES_CTR_Enc(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* IV)
 {
+    // Skeleton of the CTR mode.
+    // Stole CtrBlock from RFC to make it easier
+    uint8_t CtrBlock[16];
+    uint8_t StreamBlock[16];
+    for (int i = 0; i < 16; i++)
+        CtrBlock[i] = IV[i];
+
+    //? Loop here
+    // Gen StreamBlock
+    for (int j = 0; j < 16; j++)
+        StreamBlock[i] = CtrBlock[i];
+    AES_STD_Enc(StreamBlock, Key);
+    for (int j = 0; j < 16; j++)
+        Plaintext[j] = Plaintext[j] ^ StreamBlock[j];
+    // Increments the first 4 bytes (LE)
+    ((uint32_t*) CtrBlock)[0]++;
+
+        
     // RFC8452 standards of ctr blocks
     // First 4 bytes are uint32_t counter (incremented each time)
     // IV = Block
