@@ -345,13 +345,33 @@ bool AES_GCM_Dec(const uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, si
 
 //? AES-GCM-SIV Implementation
 
-uint8_t* AES_GCM_SIV_Enc()
+uint8_t* AES_GCM_SIV_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV)
 {
     // Slower, but nonce resistant. So only advantages from my standpoint
     // Requires some amount of functionality from the previous, but a lot of changes exist.
     // Ciphertext is 16 bytes longer, hopefully the tag.
     // AES-256 implementation
     //https://datatracker.ietf.org/doc/html/rfc8452
+    //* 32-byte key
+    //* 12 byte nonce
+    //* Plaintext
+    //* AAD
+    //* Sizes for both.
+
+    // SIVDeriveKeys();
+    // Similar GHash (Padded AAD, Padded Plaintext, BitSizes) (Double check)
+    // Difference is the function, but the data itself seems to be the same. (except plaintext is not encrypted yet)
+    // S = PolyVal(Hash); (New GHash)
+    // S ^= IV, Then S[15] = S[15] & 0x7F (0b01111111)
+    // Tag = AES(EncKey, S)
+    
+    // ICB = Tag
+    // ICB |= 0x80 (0b10000000)
+    // C = AES_CTR(EncKey, ICB, Plaintext)  
+    //! AES_CTR cannot be GCTR, they are entirely different.
+    //! If this is a full implement, I might add it just for the funny.
+    // C is direct (pointer)
+    // Tag is returned
     
     return NULL;
 }
@@ -676,6 +696,62 @@ static void GCTR(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint
    for (size_t j = 0; j < Size%16; j++)
         Plaintext[Size-(Size%16)+j] ^= Temp[j];
 
+    return;
+}
+
+static void SIVDeriveKeys(const uint8_t* IV, const uint8_t* MasterKey, uint8_t* EncKey, uint8_t* AuthKey)
+{
+    //? MasterKey = 32-byte (AES-256)
+    //? AuthKey = Empty 16-byte
+    //? EncKey = Empty 32-byte
+    //* Message Auth Key (MAK) & Message Enc Key (MEK)
+
+    // 16 bytes (128-bit Tag)
+    // MAK = AES(key = KeyGenKey, block = LE32(0) || nonce)[8bytes] ||
+    //      AES(key=keyGenKey, block = LE32(1) || nonce)[8bytes]
+
+    // 32 bytes (256-bit AES-Key)
+    // MEK = AES(key = KeyGenKey, block = LE32(2) || nonce)[8bytes] ||
+    //      AES(key = KeyGenKey, block = LE32(3) || nonce)[8bytes] ||
+    //      AES(key = KeyGenKey, block = LE32(4) || nonce)[8bytes] ||
+    //      AES(key = KeyGenKey, block = LE32(5) || nonce)[8bytes] ||
+    
+    //* Similar but for 2 for MAK
+    uint8_t TempEncKey[4][16];
+    for (int i = 0; i < 4; i++)
+    {
+        //* Should be little endian
+        ((uint32_t*) TempEncKey[i])[0] = i+2;
+        //* Rest is IV
+        for (int j = 0; j < 12; j++)
+            TempEncKey[i][j+4] =  IV[j];
+    }
+
+    for (int i = 0; i < 4; i++)
+        AES_STD_Enc(TempEncKey[i], MasterKey);
+
+    for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 8; j++)
+            EncKey[i*8+j] = TempEncKey[i][j];
+
+    // LE is the number, in 32 bit Little Endian
+    // nonce is 96-bits
+    // These form a valid block.
+    // So LE should just be a const
+
+    
+    return;
+}
+
+static void PolyVal()
+{
+    // GHash but GCM-SIV
+    return;
+}
+
+static void SivCTR()
+{
+    // Need a new one.
     return;
 }
 

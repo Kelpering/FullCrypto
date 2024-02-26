@@ -25,6 +25,8 @@ int main()
     bool IsValid = AES_GCM_Dec(Plaintext, sizeof(Plaintext), AAD, sizeof(AAD), Tag, Key, IV);
     printf("\nIsValid: %s", (IsValid) ? "true" : "false");
     PrintInfo(Plaintext, sizeof(Plaintext), IsValid); 
+    
+    free(Tag);  //! Must de-allocate Tag
     return 0;
 }
 
