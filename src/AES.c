@@ -343,6 +343,26 @@ bool AES_GCM_Dec(const uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, si
 }
 
 
+//? AES-GCM-SIV Implementation
+
+uint8_t* AES_GCM_SIV_Enc()
+{
+    // Slower, but nonce resistant. So only advantages from my standpoint
+    // Requires some amount of functionality from the previous, but a lot of changes exist.
+    // Ciphertext is 16 bytes longer, hopefully the tag.
+    // AES-256 implementation
+    //https://datatracker.ietf.org/doc/html/rfc8452
+    
+    return NULL;
+}
+
+bool AES_GCM_SIV_Dec()
+{
+
+    return false;
+}
+
+
 //? AES non-standard test functions
 
 uint8_t* AES_KeyGen256(uint32_t Seed)
