@@ -318,12 +318,49 @@ uint8_t* AES_GCM_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_
     return Hash;
 }
 
-
-ByteArr AES_GCM_Dec(const uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* IV)
+bool AES_GCM_Dec(const uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size_t ASize, const uint8_t* Tag, const uint8_t* Key, const uint8_t* IV)
 {
-    //! We must return FAIL here if there is an error (aka tampering/mis-match)
-    //! OR make another function JUST for checking authenticity.
-    return (ByteArr){NULL, 0};
+    //* Zero block (encrypted)
+    uint8_t H[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    AES_STD_Enc(H, Key);
+
+    //* J (IV) and JInc (GInc32(J))
+    uint8_t J[16] =    {IV[0],IV[1],IV[2],IV[3],IV[4],IV[5],IV[6],IV[7],IV[8],IV[9],IV[10],IV[11],0,0,0,1};
+    uint8_t JInc[16] = {IV[0],IV[1],IV[2],IV[3],IV[4],IV[5],IV[6],IV[7],IV[8],IV[9],IV[10],IV[11],0,0,0,2};
+
+    //* Initial hash block must be 0.
+    uint8_t* Hash = calloc(16, 1);
+    uint8_t LenBuf[16];
+    size_t TempASize = ASize<<3;
+    size_t TempCSize = CSize<<3;
+    for(int i = 0; i < 8; i++)
+    {
+        LenBuf[i] = ((uint8_t*) &TempASize)[7-i];
+        LenBuf[i+8] = ((uint8_t*) &TempCSize)[7-i];
+    }
+
+    //* Hash = GHash(AAD+0 Pad + PSize + 0 Pad + ASize[bits] + PSize[bits])
+    //* Using GHash's last block as a first block works the same as concatenating the entire bit string.
+    GHash(H, AAD, ASize, Hash);
+    GHash(H, Ciphertext, CSize, Hash);
+    GHash(H, LenBuf, 16, Hash);
+
+    //* Encrypt Hash with Key (Tag)
+    GCTR(Hash, 16, Key, J);
+
+    //* Validates (Ciphertext + AAD + Tag)
+    bool IsValid = true;
+    for (int i = 0; i < 16; i++)
+        if (Tag[i] != Hash[i])
+            IsValid = false;
+    
+    //* If invalid, return without modifying Ciphertext.
+    if (IsValid == false)
+        return false;
+    
+    //* Decipher Ciphertext and return true.
+    GCTR(Ciphertext, CSize, Key, JInc);
+    return true;
 }
 
 

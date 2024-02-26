@@ -1,6 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include "../include/ByteArr.h"
 
 
@@ -53,17 +54,26 @@ ByteArr AES_CBC_Enc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key, c
 /// @note Will return NULL pointer and a size of 0 if invalid.
 ByteArr AES_CBC_Dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key, const uint8_t* IV);
 
-/// @brief test
+/// @brief Encrypts Plaintext while also generating Tag to prove that neither AAD or Ciphertext were been altered (Authenticated Encryption).
 /// @param Plaintext Plaintext of any size, directly altered into Ciphertext.
 /// @param PSize Size of Plaintext in bytes.
 /// @param AAD Additional Authenticated Data (AAD). Not encrypted, but factored into the Tag
 /// @param ASize Size of AAD in bytes.
-/// @param Key 256-bit key (32 bytes).
-/// @param IV 96-bit IV (12 bytes).
+/// @param Key 256-bit (32 bytes) key.
+/// @param IV 96-bit (12 bytes) IV.
 /// @returns An allocated 128-bit tag (16 bytes). Used to prove Ciphertext has not been altered.
 uint8_t* AES_GCM_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV);
 
-// Possibly a verification function alongside decryption?
+/// @brief Decrypts Ciphertext while also validating Tag to prove that neither AAD or Ciphertext were altered (Authenticated Decryption).
+/// @param Ciphertext Ciphertext of any size, directly altered into Plaintext.
+/// @param CSize Size of Ciphertext in bytes.
+/// @param AAD Additional Authenticated Data (AAD) associated with Ciphertext (generated together) to validate.
+/// @param ASize Size of AAD in bytes.
+/// @param Tag 128-bit (16 byte) tag that validates that Ciphertext and AAD have not been altered.
+/// @param Key 256-bit (32 byte) key.
+/// @param IV 96-bit (12 byte) IV.
+/// @returns A boolean value on whether or not the decryption was valid. If invalid, Ciphertext was not altered.
+bool AES_GCM_Dec(const uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size_t ASize, const uint8_t* Tag, const uint8_t* Key, const uint8_t* IV);
 
 //* Non-standard generator functions
 
