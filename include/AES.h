@@ -83,8 +83,8 @@ bool AES_GCM_Dec(const uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, si
 /// @warning This function is insecure and should only be used for testing.
 uint8_t* AES_KeyGen256(uint32_t Seed);
 
-/// @brief Generates a rando 16-byte IV for use with CBC.
+/// @brief Generates a random 16-byte IV for use with CBC.
 /// @param Seed A random number to initialize srand(). Recommended to use time(NULL).
 /// @returns An allocated 16-byte array. Must be de-allocated to prevent memory leaks.
 /// @warning This function is insecure, and should only be used for testing.
-uint8_t* AES_IVGen(uint32_t Seed);
+uint8_t* AES_IVGen(uint32_t Seed, size_t Size);

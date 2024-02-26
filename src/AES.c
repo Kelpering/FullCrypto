@@ -129,27 +129,6 @@ void AES_STD_Dec(uint8_t* Ciphertext, const uint8_t* Key)
     return;
 }
 
-//? AES non-standard test functions
-
-uint8_t* AES_KeyGen256(uint32_t Seed)
-{
-    srand(Seed);
-    uint8_t* Key256 = malloc(32);
-
-    for (int i = 0; i < 32; i++)
-        Key256[i] = rand() % 256;
-    return Key256;
-}
-
-uint8_t* AES_IVGen(uint32_t Seed)
-{
-    srand(Seed);
-    uint8_t* IV = malloc(16);
-
-    for (int i = 0; i < 16; i++)
-        IV[i] = rand() % 256;
-    return IV;
-}
 
 //? AES-ECB implementation
 
@@ -361,6 +340,29 @@ bool AES_GCM_Dec(const uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, si
     //* Decipher Ciphertext and return true.
     GCTR(Ciphertext, CSize, Key, JInc);
     return true;
+}
+
+
+//? AES non-standard test functions
+
+uint8_t* AES_KeyGen256(uint32_t Seed)
+{
+    srand(Seed);
+    uint8_t* Key256 = malloc(32);
+
+    for (int i = 0; i < 32; i++)
+        Key256[i] = rand() % 256;
+    return Key256;
+}
+
+uint8_t* AES_IVGen(uint32_t Seed, size_t Size)
+{
+    srand(Seed);
+    uint8_t* IV = malloc(Size);
+
+    for (int i = 0; i < Size; i++)
+        IV[i] = rand() % 256;
+    return IV;
 }
 
 
