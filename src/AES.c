@@ -188,6 +188,33 @@ ByteArr AES_ECB_Dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key)
 }
 
 
+//? AES-CTR Implementation
+
+static void AES_CTR_Enc(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* IV)
+{
+    // RFC8452 standards of ctr blocks
+    // First 4 bytes are uint32_t counter (incremented each time)
+    // IV = Block
+
+    // Loop:
+    //      StreamBlock = AES(Block)
+    //      Block = IncBlock() (uint32_t at first 4 bytes, increment)
+
+    // Output[i] = KeyStream[i] ^ Plaintext[i];
+
+    // IV = ICB (16-bytes)
+    // Generate T[i] as an increment uint32_t at the start
+
+    // C[i] = Plaintext[i] ^ AES(T[i], Key)
+    
+    // C[final] = Plaintext[final]* ^ AES(T[final], key); 
+    // AES is cut off here by bytes.
+    return;
+}
+
+static void AES_CTR_Dec(uint8_t* Ciphertext, size_t Size, const uint8_t* Key)
+
+
 //? AES-CBC implementation
 
 ByteArr AES_CBC_Enc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* IV)
