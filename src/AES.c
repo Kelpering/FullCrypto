@@ -1,9 +1,12 @@
 #include "../include/AES.h"
 #include "../include/AESPrivate.h"
+#include <stdio.h>
 
-//? Public functions
 
-void AESEnc(uint8_t* Plaintext, const uint8_t* Key)
+//* Public functions
+//? AES standard implementation
+
+void AES_STD_Enc(uint8_t* Plaintext, const uint8_t* Key)
 {
     //? If SBox has never been run before, initialize.
     if (SBox[0] != 0x63)
@@ -39,9 +42,9 @@ void AESEnc(uint8_t* Plaintext, const uint8_t* Key)
     AddRoundKey(State, (EKey+(14*16)));
 
     //? Clear and de-allocate Expanded Key
-    // for (int i = 0; i < 60; i++)
-    //     EKey[i] = 0;
-    free(EKey);  // Possible segfault risk
+    for (int i = 0; i < 240; i++)
+        EKey[i] = 0;
+    free(EKey);
 
     //? Fill Data sideways
     Plaintext[0] = State[0];
@@ -64,7 +67,7 @@ void AESEnc(uint8_t* Plaintext, const uint8_t* Key)
     return;
 }
 
-void AESDec(uint8_t* Ciphertext, const uint8_t* Key)
+void AES_STD_Dec(uint8_t* Ciphertext, const uint8_t* Key)
 {
     //? If InvSBox has never been run before, initialize.
     if (InvSBox[0] != 0x63)
@@ -101,8 +104,8 @@ void AESDec(uint8_t* Ciphertext, const uint8_t* Key)
     AddRoundKey(State, EKey + 0);
     
     //? Clear and de-allocate Expanded Key
-    // for (int i = 0; i < 30; i++)
-    //     EKey[i] = 0;
+    for (int i = 0; i < 240; i++)
+        EKey[i] = 0;
     free(EKey);     //! Free here is SegFaulting somehow, although I am unsure why.
 
     //? Fill Data sideways
@@ -126,7 +129,9 @@ void AESDec(uint8_t* Ciphertext, const uint8_t* Key)
     return;
 }
 
-uint8_t* AESKeyGen256(uint32_t Seed)
+//? AES non-standard test functions
+
+uint8_t* AES_KeyGen256(uint32_t Seed)
 {
     srand(Seed);
     uint8_t* Key256 = malloc(32);
@@ -136,8 +141,231 @@ uint8_t* AESKeyGen256(uint32_t Seed)
     return Key256;
 }
 
+uint8_t* AES_IVGen(uint32_t Seed)
+{
+    srand(Seed);
+    uint8_t* IV = malloc(16);
 
-//? Key functions
+    for (int i = 0; i < 16; i++)
+        IV[i] = rand() % 256;
+    return IV;
+}
+
+//? AES-ECB implementation
+
+ByteArr AES_ECB_Enc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key)
+{
+    if (Size == 0)
+        return (ByteArr){NULL, 0};
+
+    //? Declare variables & ByteArr struct
+    ByteArr NewArr;
+    uint8_t PadByte = 16 - (Size%16);
+    NewArr.Size = Size + PadByte;
+    NewArr.Arr = malloc(NewArr.Size);
+
+    //? Copy over Plaintext to NewArr, then Pad to a multiple of 16
+    for (size_t i = 0; i < Size; i++)
+        NewArr.Arr[i] = Plaintext[i];
+    for (size_t i = Size; i < NewArr.Size; i++)
+        NewArr.Arr[i] = PadByte;
+
+    //? Encrypt each 16 byte block.
+    for (size_t i = 0; i < NewArr.Size; i+=16)
+        AES_STD_Enc(NewArr.Arr + i, Key);
+
+    //! Needs to be de-allocated
+    return NewArr;
+}
+
+ByteArr AES_ECB_Dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key)
+{
+    if (Size == 0 || Size%16 != 0)
+        return (ByteArr){NULL, 0};
+
+    //? Copy over Ciphertext
+    uint8_t* Temp = malloc(Size);
+    for (size_t i = 0; i < Size; i++)
+        Temp[i] = Ciphertext[i];
+
+    //? Decrypt Temp, 16 bytes at a time
+    for (size_t i = 0; i < Size; i+=16)
+        AES_STD_Dec(Temp + i, Key);
+
+    //? Declare ByteArr Struct
+    ByteArr NewArr;
+    NewArr.Size = Size - Temp[Size-1];
+    NewArr.Arr = malloc(NewArr.Size);
+
+    //? Copy over Temp to ByteArr
+    for (size_t i = 0; i < Size-Temp[Size-1]; i++)
+        NewArr.Arr[i] = Temp[i];
+
+    //? Free allocated Temp
+    free (Temp);
+
+    //! Needs to be de-allocated
+    return NewArr;
+}
+
+
+//? AES-CBC implementation
+
+ByteArr AES_CBC_Enc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* IV)
+{
+    if (Size == 0)
+        return (ByteArr){NULL, 0};
+
+    ByteArr NewArr;
+    uint8_t PadByte = 16 - (Size%16);
+    NewArr.Size = PadByte + Size;
+    NewArr.Arr = malloc(NewArr.Size);
+
+    //? Fill NewArr with relevant data and padding.
+    for (size_t i = 0; i < Size; i++)
+        NewArr.Arr[i] = Plaintext[i];
+    for (size_t i = Size; i < NewArr.Size; i++)
+        NewArr.Arr[i] = PadByte;
+
+    for (int i = 0; i < 16; i++)
+        NewArr.Arr[i] ^= IV[i];
+    for (size_t i = 0; i < NewArr.Size - 16; i+=16)
+    {
+        AES_STD_Enc(NewArr.Arr+i, Key);
+        for (int j = 0; j < 16; j++)
+            NewArr.Arr[i+16 + j] ^= NewArr.Arr[i + j];
+    }
+    // Final one without CBC function
+    AES_STD_Enc(NewArr.Arr+NewArr.Size-16, Key);
+
+    //! Needs to be de-allocated
+    return NewArr;
+}
+
+ByteArr AES_CBC_Dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key, const uint8_t* IV)
+{
+    if (Size == 0 || Size%16 != 0)
+        return (ByteArr){NULL, 0};
+
+    //? Copy over Ciphertext
+    uint8_t* Temp = malloc(Size);
+    for (size_t i = 0; i < Size; i++)
+        Temp[i] = Ciphertext[i];
+
+    //? Decrypt Temp, 16 bytes at a time
+    for (size_t i = 0; i < Size; i+=16)
+        AES_STD_Dec(Temp + i, Key);
+
+    //? XOR each Ciphertext
+    for (int i = 0; i < 16; i++)
+        Temp[i] ^= IV[i];
+    for (size_t i = 16; i < Size; i++)
+        Temp[i] ^= Ciphertext[i-16];
+
+    //? Declare ByteArr Struct
+    ByteArr NewArr;
+    NewArr.Size = Size - Temp[Size - 1];
+    NewArr.Arr = malloc(NewArr.Size);
+
+    //? Copy over Temp to ByteArr
+    for (size_t i = 0; i < 32; i++)
+        NewArr.Arr[i] = Temp[i];
+
+    //? Free allocated Temp
+    free(Temp);
+    
+    //! Needs to be de-allocated
+    return NewArr;
+}
+
+
+//? AES-GCM implementation
+
+uint8_t* AES_GCM_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV)
+{
+    //* Zero block (encrypted)
+    uint8_t H[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    AES_STD_Enc(H, Key);
+
+    //* J (IV) and JInc (GInc32(J))
+    uint8_t J[16] =    {IV[0],IV[1],IV[2],IV[3],IV[4],IV[5],IV[6],IV[7],IV[8],IV[9],IV[10],IV[11],0,0,0,1};
+    uint8_t JInc[16] = {IV[0],IV[1],IV[2],IV[3],IV[4],IV[5],IV[6],IV[7],IV[8],IV[9],IV[10],IV[11],0,0,0,2};
+
+    //* Encrypt Plaintext here via GCTR. (Ciphertext)
+    GCTR(Plaintext, PSize, Key, JInc);
+
+    //* Initial hash block must be 0.
+    uint8_t* Hash = calloc(16, 1);
+    uint8_t LenBuf[16];
+    size_t TempASize = ASize<<3;
+    size_t TempPSize = PSize<<3;
+    for(int i = 0; i < 8; i++)
+    {
+        LenBuf[i] = ((uint8_t*) &TempASize)[7-i];
+        LenBuf[i+8] = ((uint8_t*) &TempPSize)[7-i];
+    }
+
+    //* Hash = GHash(AAD+0 Pad + PSize + 0 Pad + ASize[bits] + PSize[bits])
+    //* Using GHash's last block as a first block works the same as concatenating the entire bit string.
+    GHash(H, AAD, ASize, Hash);
+    GHash(H, Plaintext, PSize, Hash);
+    GHash(H, LenBuf, 16, Hash);
+
+    //* Encrypt Hash with Key (Tag)
+    GCTR(Hash, 16, Key, J);
+
+    //! Needs to be de-allocated
+    return Hash;
+}
+
+bool AES_GCM_Dec(const uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size_t ASize, const uint8_t* Tag, const uint8_t* Key, const uint8_t* IV)
+{
+    //* Zero block (encrypted)
+    uint8_t H[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    AES_STD_Enc(H, Key);
+
+    //* J (IV) and JInc (GInc32(J))
+    uint8_t J[16] =    {IV[0],IV[1],IV[2],IV[3],IV[4],IV[5],IV[6],IV[7],IV[8],IV[9],IV[10],IV[11],0,0,0,1};
+    uint8_t JInc[16] = {IV[0],IV[1],IV[2],IV[3],IV[4],IV[5],IV[6],IV[7],IV[8],IV[9],IV[10],IV[11],0,0,0,2};
+
+    //* Initial hash block must be 0.
+    uint8_t* Hash = calloc(16, 1);
+    uint8_t LenBuf[16];
+    size_t TempASize = ASize<<3;
+    size_t TempCSize = CSize<<3;
+    for(int i = 0; i < 8; i++)
+    {
+        LenBuf[i] = ((uint8_t*) &TempASize)[7-i];
+        LenBuf[i+8] = ((uint8_t*) &TempCSize)[7-i];
+    }
+
+    //* Hash = GHash(AAD+0 Pad + PSize + 0 Pad + ASize[bits] + PSize[bits])
+    //* Using GHash's last block as a first block works the same as concatenating the entire bit string.
+    GHash(H, AAD, ASize, Hash);
+    GHash(H, Ciphertext, CSize, Hash);
+    GHash(H, LenBuf, 16, Hash);
+
+    //* Encrypt Hash with Key (Tag)
+    GCTR(Hash, 16, Key, J);
+
+    //* Validates (Ciphertext + AAD + Tag)
+    bool IsValid = true;
+    for (int i = 0; i < 16; i++)
+        if (Tag[i] != Hash[i])
+            IsValid = false;
+    
+    //* If invalid, return without modifying Ciphertext.
+    if (IsValid == false)
+        return false;
+    
+    //* Decipher Ciphertext and return true.
+    GCTR(Ciphertext, CSize, Key, JInc);
+    return true;
+}
+
+
+//* Static functions
+//? Key Functions
 
 static void AddRoundKey(uint8_t* State, const uint8_t* EKey)
 {
@@ -325,6 +553,108 @@ static uint8_t GInv(uint8_t Byte)
             b = GMul(b,b);
             b = GMul(Byte,b);
     return GMul(b,b);
+}
+
+static void GInc32(uint8_t* Block)
+{
+    //* Reverses the endian of Block (as a 128-bit number) to allow for proper increment.
+    uint32_t Temp = (Block[12] << 24) | (Block[13] << 16) | (Block[14] << 8) | Block[15];
+    Temp++;
+    Block[12] = (Temp >> 24) & 0xFF;
+    Block[13] = (Temp >> 16) & 0xFF;
+    Block[14] = (Temp >> 8) & 0xFF;
+    Block[15] = Temp & 0xFF;
+    return;
+}
+
+static void GBlockMul(const uint8_t* X, const uint8_t* Y, uint8_t* Result)
+{
+    //? Each block is a uint8_t[16] array, which represents a 128-bit number.
+    uint8_t XCpy[16];
+    uint8_t YCpy[16];
+    for (int i = 0 ; i < 16; i++)
+    {
+        XCpy[i] = X[i];
+        YCpy[i] = Y[i];
+        Result[i] = 0;
+    }
+
+    for (int i = 0; i < 128; i++)
+    {
+        if (BitArr128(YCpy, i) == 1)
+            for (int i = 0 ; i < 16; i++)
+                Result[i] ^= XCpy[i];
+
+        if (BitArr128(XCpy, 127) == 0)
+        {            
+            for (int i = 15; i > 0; i--)
+                XCpy[i] = ((XCpy[i-1] & 1) << 7) | (XCpy[i] >> 1);
+            XCpy[0] = (XCpy[0] >> 1);
+        }
+        else
+        {
+            for (int i = 15; i > 0; i--)
+                XCpy[i] = ((XCpy[i-1] & 1) << 7) | (XCpy[i] >> 1);
+            XCpy[0] = (XCpy[0] >> 1);
+            
+            //* V ^= R
+            XCpy[0] ^= 0xE1;
+        }
+    }
+    return;
+}
+
+static void GHash(const uint8_t* H, const uint8_t* Block, size_t Size, uint8_t* Output)
+{   
+    for (size_t i = 0; i < (Size>>4); i++)
+    {
+        for (int j = 0; j < 16; j++)
+            Output[j] ^= Block[i*16+j];
+        GBlockMul(Output, H, Output);
+    }
+    
+    //* If final Block is incomplete, pad with 0's first
+    if (Size % 16 != 0)
+    {
+        for (size_t j = 0; j < Size%16; j++)
+            Output[j] ^= Block[Size-(Size%16)+j];
+        for (int j = Size%16; j < 16; j++)
+            Output[j] ^= 0;
+        GBlockMul(Output, H, Output);
+    }
+    
+    return;
+}
+
+static void GCTR(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* ICB)
+{
+    //* Prevent Size overflow on last block.
+    if (Size == 0)
+        return;
+
+    uint8_t Temp[16];
+    uint8_t CB[16];
+    for (int i = 0; i < 16; i++)
+        CB[i] = ICB[i];
+    
+    //* Generate counter, Encrypt Counter, XOR plaintext block with counter.
+   for (size_t i = 0; i < Size-(Size%16); i+=16)
+   {
+       for (size_t j = 0; j < 16; j++)
+            Temp[j] = CB[j];
+       AES_STD_Enc(Temp, Key);
+       for (int j = 0; j < 16; j++)
+            Plaintext[i+j] ^= Temp[j];
+       GInc32(CB);
+   } 
+   //* Final Block (works on incomplete blocks)
+   for (int j = 0; j < 16; j++)
+       Temp[j] = CB[j];
+   AES_STD_Enc(Temp, Key);
+   for (size_t j = 0; j < Size%16; j++)
+        Plaintext[Size-(Size%16)+j] ^= Temp[j];
+
+    return;
 }
 
 static uint8_t SBoxFunc(uint8_t Byte)

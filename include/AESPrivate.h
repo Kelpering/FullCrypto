@@ -10,6 +10,11 @@
 /// @param shift Number of bits to shift by.
 #define ROTL8(x, shift) ((x<<shift) | (x >> (8 - shift)))
 
+/// @brief Accesses byte array X as if it were a bit array.
+/// @param x A uint8_t[16].
+/// @param bit The bit to access, from 0-127.
+#define BitArr128(x, bit) ((x[bit>>3] >> (7-(bit%8))) & 1)
+
 /// @brief SBox array to allow for much faster encryption.
 static uint8_t SBox[256];
 
@@ -78,6 +83,30 @@ static uint8_t GMul(uint8_t x, uint8_t y);
 /// @brief Generates a number for Byte that, when multiplied within the Galois Field GF(2^8), returns 1.
 /// @returns The Multiplicative Inverse of Byte.
 static uint8_t GInv(uint8_t Byte);
+
+/// @brief Increments the last 32 bits of Block (as if it were a 128-bit number).
+/// @param Block A uint8_t[16] representing a 128-bit number.
+static void GInc32(uint8_t* Block);
+
+/// @brief Returns X*Y in GF(2^128) into Result.
+/// @param X A uint8_t[16] that represents a 128-bit number.
+/// @param Y A uint8_t[16] that represents a 128-bit number.
+/// @param Result The result, a uint8_t[16], overwritten.
+static void GBlockMul(const uint8_t* X, const uint8_t* Y, uint8_t* Result);
+
+/// @brief test
+/// @param H test
+/// @param Block test
+/// @param BlockNum test
+/// @param Output test
+static void GHash(const uint8_t* H, const uint8_t* Block, size_t Size, uint8_t* Output);
+
+/// @brief test
+/// @param Plaintext test
+/// @param Size test
+/// @param Key test
+/// @param ICB test
+static void GCTR(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* ICB);
 
 /// @brief Applies SBox[] to a Byte, but via calculations instead of an array.
 /// @returns SBox[Byte].
