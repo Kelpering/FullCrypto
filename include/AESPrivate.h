@@ -84,28 +84,30 @@ static uint8_t GMul(uint8_t x, uint8_t y);
 /// @returns The Multiplicative Inverse of Byte.
 static uint8_t GInv(uint8_t Byte);
 
-/// @brief Increments the last 32 bits of Block (as if it were a 128-bit number).
+/// @brief Increments the last 32 bits of a 128-bit Block (as if it were a 128-bit number).
 /// @param Block A uint8_t[16] representing a 128-bit number.
 static void GInc32(uint8_t* Block);
 
 /// @brief Returns X*Y in GF(2^128) into Result.
 /// @param X A uint8_t[16] that represents a 128-bit number.
 /// @param Y A uint8_t[16] that represents a 128-bit number.
-/// @param Result The result, a uint8_t[16], overwritten.
+/// @param Result The product, can be X, Y, or any other uint8_t[16].
 static void GBlockMul(const uint8_t* X, const uint8_t* Y, uint8_t* Result);
 
-/// @brief test
-/// @param H test
-/// @param Block test
-/// @param BlockNum test
-/// @param Output test
+/// @brief Performs the GHash on Block, of Size bytes. If Size is not a multiple of 16, 0's will be padded to the end.
+/// @param H The Hash Subkey, internal to GCM.
+/// @param Block A uint8_t[] of any size. Contains the data to hash.
+/// @param Size The size of the Block, in bytes.
+/// @param Output A uint8_t[16] to write the final hash to.
+/// @note Due to how the GHash function works, the final hash block can be put into Output to "concatenate" the byte strings (on full 16-byte blocks). Ex: GHash(A+B->O) = GHash(B->GHash(A))
 static void GHash(const uint8_t* H, const uint8_t* Block, size_t Size, uint8_t* Output);
 
-/// @brief test
-/// @param Plaintext test
-/// @param Size test
-/// @param Key test
-/// @param ICB test
+/// @brief Encrypts (and decrypts) Plaintext.
+/// @param Plaintext The plaintext of any size, overwritten by result (Ciphertext).
+/// @param Size The Size of Plaintext (and Ciphertext) in bytes.
+/// @param Key The key to encrypt Plaintext and decrypt Ciphertext with. 
+/// @param ICB The Initial Counter Block (IV).
+/// @note This function works forwards and backwards. Plaintext is encrypted on the first run, and decrypted on the second (identical) run.
 static void GCTR(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* ICB);
 
 /// @brief Applies SBox[] to a Byte, but via calculations instead of an array.
