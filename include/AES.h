@@ -20,7 +20,7 @@ void AES_STD_Dec(uint8_t* Ciphertext, const uint8_t* Key);
 //* AES Implementations
 
 /// @brief An ECB encryption implementation of AES-256.
-/// @param Plaintext Plaintext of any positive size, represented as a uint8_t array.
+/// @param Plaintext Plaintext of any size, represented as a uint8_t array.
 /// @param Size The size of said uint8_t array.
 /// @param Key 32-byte key to encrypt the Plaintext
 /// @returns A ByteArr struct containing an allocated uint8_t array to the ciphertext, and the size of said array. The array pointer must be de-allocated to prevent memory leaks.
@@ -36,7 +36,7 @@ ByteArr AES_ECB_Enc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key);
 ByteArr AES_ECB_Dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key);
 
 /// @brief A CBC encryption implementation of AES-256.
-/// @param Plaintext Plaintext of any positive size, represented as a uint8_t array.
+/// @param Plaintext Plaintext of any size, represented as a uint8_t array.
 /// @param Size The size of said uint8_t array.
 /// @param Key 32-byte key to encrypt the Plaintext
 /// @param IV A 16-byte, randomly chosen, Initialization vector. Does not have to be hidden.
@@ -54,14 +54,16 @@ ByteArr AES_CBC_Enc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key, c
 ByteArr AES_CBC_Dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key, const uint8_t* IV);
 
 /// @brief test
-/// @param Plaintext Plaintext
-/// @param PSize Plaintext Size
-/// @param AAD Additional Authenticated Data
-/// @param ASize AAD size
-/// @param Key 256-bit key (32 byte)
-/// @param IV 96-bit IV (12 byte)
-/// @returns test
-ByteArr AES_GCM_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV);
+/// @param Plaintext Plaintext of any size, directly altered into Ciphertext.
+/// @param PSize Size of Plaintext in bytes.
+/// @param AAD Additional Authenticated Data (AAD). Not encrypted, but factored into the Tag
+/// @param ASize Size of AAD in bytes.
+/// @param Key 256-bit key (32 bytes).
+/// @param IV 96-bit IV (12 bytes).
+/// @returns An allocated 128-bit tag (16 bytes). Used to prove Ciphertext has not been altered.
+uint8_t* AES_GCM_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV);
+
+// Possibly a verification function alongside decryption?
 
 //* Non-standard generator functions
 

@@ -281,97 +281,48 @@ ByteArr AES_CBC_Dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key, 
 
 //? AES-GCM implementation
 
-ByteArr AES_GCM_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV)
+uint8_t* AES_GCM_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV)
 {
-    //? IV = 12 bytes
-    //? Ciphertext = ? (might be able to overwrite Plaintext)
-    //? Authentication Tag = ?-bits/bytes
-
-    //! Required funcs:
-    //* GCTR
-    //? GHash (Must be tested in the future)
-    //* GInc32
-    //* GBlockMul
-
     //* Zero block (encrypted)
     uint8_t H[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
     AES_STD_Enc(H, Key);
 
-    //* J (ICB), with GInc32 applied.
-    uint8_t J[16] = {IV[0],IV[1],IV[2],IV[3],IV[4],IV[5],IV[6],IV[7],IV[8],IV[9],IV[10],IV[11],0,0,0,2};
+    //* J (IV) and JInc (GInc32(J))
+    uint8_t J[16] =    {IV[0],IV[1],IV[2],IV[3],IV[4],IV[5],IV[6],IV[7],IV[8],IV[9],IV[10],IV[11],0,0,0,1};
+    uint8_t JInc[16] = {IV[0],IV[1],IV[2],IV[3],IV[4],IV[5],IV[6],IV[7],IV[8],IV[9],IV[10],IV[11],0,0,0,2};
 
-    //* Encrypt Plaintext here via GCTR.
-    //! Need to test with 2+ blocks, incomplete blocks, etc.
-    GCTR(Plaintext, PSize, Key, J);
+    //* Encrypt Plaintext here via GCTR. (Ciphertext)
+    GCTR(Plaintext, PSize, Key, JInc);
 
-    // u = 16 * ceil(PSize/16)-PSize | v = 16 * ceil(ASize/16)-ASize
-    // PSize = 16, u = 0; PSize = 17, u=47
-    // (16-x%16)%16
+    //* Initial hash block must be 0.
+    uint8_t* Hash = calloc(16, 1);
+    uint8_t LenBuf[16];
+    size_t TempASize = ASize<<3;
+    size_t TempPSize = PSize<<3;
+    for(int i = 0; i < 8; i++)
+    {
+        LenBuf[i] = ((uint8_t*) &TempASize)[7-i];
+        LenBuf[i+8] = ((uint8_t*) &TempPSize)[7-i];
+    }
 
-    // ASize & PSize are already binary and 64 bits (uint64_t)
-    // || is concat here
-    // S = GHash_h(A || 0^v || C || 0^u || ASize || PSize)
-    // Combine AAD + 0^V + Plaintext + 0^U + ASize + PSize
-    // Malloc should allocate the correct amount of bytes to copy over.
-    //! Are the final two (Sizes) little or big endian?
-    //! Start with big, test, then repeat with little.
-    // uint8_t ConcatHash = malloc(ASize + (16-(ASize%16))%16 + PSize + (16-(PSize%16))%16 + 8 + 8);
-    uint8_t APad = (16-ASize%16)%16;
-    uint8_t PPad = (16-PSize%16)%16;
-    uint8_t* ConcatHash = malloc (ASize+PSize+APad+PPad+16);
-    size_t CurSize = 0;
-    
-    for (size_t i = 0; i < ASize; i++)
-        ConcatHash[i] = AAD[i];
-    CurSize += ASize;
+    //* Hash = GHash(AAD+0 Pad + PSize + 0 Pad + ASize[bits] + PSize[bits])
+    //* Using GHash's last block as a first block works the same as concatenating the entire bit string.
+    GHash(H, AAD, ASize, Hash);
+    GHash(H, Plaintext, PSize, Hash);
+    GHash(H, LenBuf, 16, Hash);
 
-    for (size_t i = 0; i < APad; i++)
-        ConcatHash[i+CurSize] = 0;
-    CurSize += APad;
-    
-    // //* Plaintext here has already been encrypted.
-    for (size_t i = 0; i < PSize; i++)
-        ConcatHash[i+CurSize] = Plaintext[i];
-    CurSize += PSize;
-
-    for (size_t i = 0; i < PPad; i++)
-        ConcatHash[i+CurSize] = 0;
-    CurSize += PPad;
-
-    // Convert byte to bit size
-    size_t TempASize = ASize * 8;
-    size_t TempPSize = PSize * 8;
-
-    for (size_t i = 0; i < 8; i++)
-        ConcatHash[i+CurSize] = ((uint8_t*) &TempASize)[7-i];
-    CurSize += 8;
-
-    for (size_t i = 0; i < 8; i++)
-        ConcatHash[i+CurSize] = ((uint8_t*) &TempPSize)[7-i];
-
-    for (int i = 0; i < ASize+PSize+APad+PPad+16; i++)
-        printf("0x%.2X ", ConcatHash[i]);
-
-    uint8_t Hash[16];
-    printf("\n\n");
-    // uint8_t HTest[16] = {0x66, 0xe9, 0x4b, 0xd4, 0xef, 0x8a, 0x2c, 0x3b, 0x88, 0x4c, 0xfa, 0x59, 0xca, 0x34, 0x2b, 0x2e};
-    // GHash(HTest, NULL, 0, Hash);
-    GHash(H, ConcatHash, (ASize+PSize+APad+PPad+16)>>4, Hash);
+    //* Encrypt Hash with Key (Tag)
     GCTR(Hash, 16, Key, J);
-    //! No clue what the issue is, no intermediate results.
-    //! Either hack someone elses to output their results, or just continue guessing.
-    //! I can't find one flaw in my own program, as I understand it.
-    //! Bit size -> Byte size is fixed, so that isnt the issue.
 
-    for (int i = 0; i < 16; i++)
-        printf("0x%.2X ", Hash[i]);
-
-    return (ByteArr){NULL, 0};
+    //! Needs to be de-allocated
+    return Hash;
 }
+
 
 ByteArr AES_GCM_Dec(const uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* IV)
 {
     //! We must return FAIL here if there is an error (aka tampering/mis-match)
+    //! OR make another function JUST for checking authenticity.
     return (ByteArr){NULL, 0};
 }
 
@@ -579,15 +530,15 @@ static void GInc32(uint8_t* Block)
     return;
 }
 
-static void GBlockMul(uint8_t* X, uint8_t* Y, uint8_t* Result)
+static void GBlockMul(const uint8_t* X, const uint8_t* Y, uint8_t* Result)
 {
     //? Each block is a uint8_t[16] array, which represents a 128-bit number.
     uint8_t XCpy[16];
     uint8_t YCpy[16];
     for (int i = 0 ; i < 16; i++)
     {
-        XCpy[i] = X[i];     //* V
-        YCpy[i] = Y[i];     //* Y
+        XCpy[i] = X[i];
+        YCpy[i] = Y[i];
         Result[i] = 0;
     }
 
@@ -616,87 +567,56 @@ static void GBlockMul(uint8_t* X, uint8_t* Y, uint8_t* Result)
     return;
 }
 
-static void GHash(uint8_t* H, uint8_t* Block, size_t BlockNum, uint8_t* Output)
+static void GHash(const uint8_t* H, const uint8_t* Block, size_t Size, uint8_t* Output)
 {   
-    //! Check here, seems broken.
-    //! Somewhere for Tag, between GHash and GCTR is broken, hash hasnt passed tests. 
-    //! Also, when using no H, it seems like it spat back the encryption (makes no sense)
-    //! So here is where its broken.
-    //* Allocates Y and initializes to '0'
-    uint8_t* Y = calloc(BlockNum, 16);
-
-    for (int i = 1; i < BlockNum; i++)
+    for (size_t i = 0; i < (Size>>4); i++)
     {
-        //* Y[i] = Y[i-1] ^ X[i]
         for (int j = 0; j < 16; j++)
-            Y[i*16+j] = Y[(i-1)*16+j] ^ Block[i*16+j];
-
-        //* Y[i] = (Y * X) (in GF(2^128))
-        GBlockMul(&Y[i*16], H, &Y[i*16]);
+            Output[j] ^= Block[i*16+j];
+        GBlockMul(Output, H, Output);
     }
     
-    // Return and Free Y
-    for (int j = 0; j < 16; j ++)
-        Output[j] = Y[(BlockNum-1)*16+j];
-    free(Y);
+    //* If final Block is incomplete, pad with 0's first
+    if (Size % 16 != 0)
+    {
+        for (size_t j = 0; j < Size%16; j++)
+            Output[j] ^= Block[Size-(Size%16)+j];
+        for (int j = Size%16; j < 16; j++)
+            Output[j] ^= 0;
+        GBlockMul(Output, H, Output);
+    }
+    
     return;
 }
 
 static void GCTR(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* ICB)
 {
-    //? Pre-approved cipher (AES)
-    //? Key (256-bit AES key)
-    //? Initial Counter Block (modified IV?)
-    //? Bit string X (arbitrary length) (now needs size) (make byte)
-    //? Output: Y of length len(X) (can overwrite X?)
-
-    // If empty, return 0 (might be automatic, check later).
+    //* Prevent Size overflow on last block.
     if (Size == 0)
         return;
 
-    // Calculate n (Number of blocks (16 bytes or 128-bits))
-    size_t BlockNum = Size;
-    if (Size%16 != 0)
-        BlockNum+=16;
-    BlockNum >>= 4;
-
-    //X1 = Plaintext[(1)*16+j]
-
-    // CB1 = ICB
-    uint8_t CB[16];
     uint8_t Temp[16];
+    uint8_t CB[16];
     for (int i = 0; i < 16; i++)
         CB[i] = ICB[i];
-
-    //for (i = 2 -> n) CB[i] = GInc32(CB[i-1])
-    //* Might be able to skip having another array and just reformat CB every time.
-   for (int i = 0; i < BlockNum - 1; i++)
+    
+    //* Generate counter, Encrypt Counter, XOR plaintext block with counter.
+   for (size_t i = 0; i < Size-(Size%16); i+=16)
    {
-       for (int j = 0; j < 16; j++)
+       for (size_t j = 0; j < 16; j++)
             Temp[j] = CB[j];
        AES_STD_Enc(Temp, Key);
-
        for (int j = 0; j < 16; j++)
-            Plaintext[i*16+j] ^= Temp[j];
+            Plaintext[i+j] ^= Temp[j];
        GInc32(CB);
-       //* CB = Inc32(CB);
-       // Plaintext[i] = Plaintext[i] ^ AES(CB[i], Key);
-       // CB is 16 bytes, but needs to remain
-       // Key is provided
-       //! AES_STD_Enc(CB, Key);
-       // Put curr CB into variable array, Encrypt that, then plaintext ^= that.
-       // Plaintext is unable to be used as it has data in it.
    } 
-   //* Final Block
+   //* Final Block (works on incomplete blocks)
    for (int j = 0; j < 16; j++)
        Temp[j] = CB[j];
    AES_STD_Enc(Temp, Key);
-   for (int j = 0; j < Size-(Size%16); j++)
-        Plaintext[(BlockNum-1)*16+j] ^= Temp[j];
+   for (size_t j = 0; j < Size%16; j++)
+        Plaintext[Size-(Size%16)+j] ^= Temp[j];
 
-  
-   // Below might be (but isn't always) less than 16 bytes.
-   // Plaintext[last]: Xor the last (16 or less) bytes with the same number of bytes AES(CB[last], Key) (Most Significant Bytes)
     return;
 }
 

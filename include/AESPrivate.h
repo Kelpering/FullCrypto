@@ -92,14 +92,14 @@ static void GInc32(uint8_t* Block);
 /// @param X A uint8_t[16] that represents a 128-bit number.
 /// @param Y A uint8_t[16] that represents a 128-bit number.
 /// @param Result The result, a uint8_t[16], overwritten.
-static void GBlockMul(uint8_t* X, uint8_t* Y, uint8_t* Result);
+static void GBlockMul(const uint8_t* X, const uint8_t* Y, uint8_t* Result);
 
 /// @brief test
 /// @param H test
 /// @param Block test
 /// @param BlockNum test
 /// @param Output test
-static void GHash(uint8_t* H, uint8_t* Block, size_t BlockNum, uint8_t* Output);
+static void GHash(const uint8_t* H, const uint8_t* Block, size_t Size, uint8_t* Output);
 
 /// @brief test
 /// @param Plaintext test
