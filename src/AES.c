@@ -373,9 +373,9 @@ uint8_t* AES_GCM_SIV_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, s
     // C is direct (pointer)
     // Tag is returned
 
+    //? SivDeriveKeys
     // PolyVal
     //? SivCtr
-    //! SivDeriveKeys
     // etc...
     
     return NULL;
@@ -704,8 +704,9 @@ static void GCTR(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint
     return;
 }
 
-static void SIVDeriveKeys(const uint8_t* IV, const uint8_t* MasterKey, uint8_t* EncKey, uint8_t* AuthKey)
+static void SIVDeriveKeys(const uint8_t* MasterKey, const uint8_t* IV, uint8_t* EncKey, uint8_t* AuthKey)
 {
+    //! Remove / rework when tested
     //? MasterKey = 32-byte (AES-256)
     //? AuthKey = Empty 16-byte
     //? EncKey = Empty 32-byte
