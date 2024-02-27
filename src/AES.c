@@ -374,8 +374,8 @@ uint8_t* AES_GCM_SIV_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, s
     // Tag is returned
 
     // PolyVal
-    // SivCtr
-    // SivDeriveKeys
+    //? SivCtr
+    //! SivDeriveKeys
     // etc...
     
     return NULL;
@@ -720,30 +720,52 @@ static void SIVDeriveKeys(const uint8_t* IV, const uint8_t* MasterKey, uint8_t* 
     //      AES(key = KeyGenKey, block = LE32(3) || nonce)[8bytes] ||
     //      AES(key = KeyGenKey, block = LE32(4) || nonce)[8bytes] ||
     //      AES(key = KeyGenKey, block = LE32(5) || nonce)[8bytes] ||
-    
-    //* Similar but for 2 for MAK
+
+
+    //? AuthKey
+    //* Generates TempAuthKey for AuthKey (16 bytes)
+    uint8_t TempAuthKey[2][16];
+    for (int i = 0; i < 2; i++)
+    {
+        //* Should be little endian
+        ((uint32_t*) TempAuthKey[i])[0] = i;
+
+        //* Rest is IV
+        for (int j = 0; j < 12; j++)
+            TempAuthKey[i][j+4] =  IV[j];
+    }
+
+    //* Encrypts each block in TempAuthKey
+    for (int i = 0; i < 2; i++)
+        AES_STD_Enc(TempAuthKey[i], MasterKey);
+
+    //* Assigns the first 8 bytes of TempAuthKey[i] to AuthKey (16 bytes)
+    for (int i = 0; i < 2; i++)
+        for (int j = 0; j < 8; j++)
+            AuthKey[i*8+j] = TempAuthKey[i][j];
+
+
+    //? EncKey
+    //* Generates TempEncKey for EncKey (32 bytes)
     uint8_t TempEncKey[4][16];
     for (int i = 0; i < 4; i++)
     {
         //* Should be little endian
         ((uint32_t*) TempEncKey[i])[0] = i+2;
+
         //* Rest is IV
         for (int j = 0; j < 12; j++)
             TempEncKey[i][j+4] =  IV[j];
     }
 
+    //* Encrypts each block in TempEncKey
     for (int i = 0; i < 4; i++)
         AES_STD_Enc(TempEncKey[i], MasterKey);
-
+    
+    //* Assigns the first 8 bytes of TempEncKey[i] to EncKey (32 bytes)
     for (int i = 0; i < 4; i++)
         for (int j = 0; j < 8; j++)
             EncKey[i*8+j] = TempEncKey[i][j];
-
-    // LE is the number, in 32 bit Little Endian
-    // nonce is 96-bits
-    // These form a valid block.
-    // So LE should just be a const
-
     
     return;
 }
