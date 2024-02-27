@@ -188,51 +188,6 @@ ByteArr AES_ECB_Dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key)
 }
 
 
-//? AES-CTR Implementation
-
-static void AES_CTR_Enc(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* IV)
-{
-    // Skeleton of the CTR mode.
-    // Stole CtrBlock from RFC to make it easier
-    uint8_t CtrBlock[16];
-    uint8_t StreamBlock[16];
-    for (int i = 0; i < 16; i++)
-        CtrBlock[i] = IV[i];
-
-    //? Loop here
-    // Gen StreamBlock
-    for (int j = 0; j < 16; j++)
-        StreamBlock[i] = CtrBlock[i];
-    AES_STD_Enc(StreamBlock, Key);
-    for (int j = 0; j < 16; j++)
-        Plaintext[j] = Plaintext[j] ^ StreamBlock[j];
-    // Increments the first 4 bytes (LE)
-    ((uint32_t*) CtrBlock)[0]++;
-
-        
-    // RFC8452 standards of ctr blocks
-    // First 4 bytes are uint32_t counter (incremented each time)
-    // IV = Block
-
-    // Loop:
-    //      StreamBlock = AES(Block)
-    //      Block = IncBlock() (uint32_t at first 4 bytes, increment)
-
-    // Output[i] = KeyStream[i] ^ Plaintext[i];
-
-    // IV = ICB (16-bytes)
-    // Generate T[i] as an increment uint32_t at the start
-
-    // C[i] = Plaintext[i] ^ AES(T[i], Key)
-    
-    // C[final] = Plaintext[final]* ^ AES(T[final], key); 
-    // AES is cut off here by bytes.
-    return;
-}
-
-static void AES_CTR_Dec(uint8_t* Ciphertext, size_t Size, const uint8_t* Key)
-
-
 //? AES-CBC implementation
 
 ByteArr AES_CBC_Enc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* IV)
@@ -417,6 +372,11 @@ uint8_t* AES_GCM_SIV_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, s
     //! If this is a full implement, I might add it just for the funny.
     // C is direct (pointer)
     // Tag is returned
+
+    // PolyVal
+    // SivCtr
+    // SivDeriveKeys
+    // etc...
     
     return NULL;
 }
@@ -794,9 +754,35 @@ static void PolyVal()
     return;
 }
 
-static void SivCTR()
+static void SivCTR(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* IV)
 {
-    // Need a new one.
+    //* Setup CtrBlock and StreamBlock
+    uint8_t CtrBlock[16] = {IV[0], IV[1], IV[2], IV[3], IV[4], IV[5], IV[6], IV[7], IV[8], IV[9], IV[10], IV[11], IV[12], IV[13], IV[14], IV[15]};
+    uint8_t StreamBlock[16];
+
+    for (int i = 0; i < Size/16; i++)
+    {
+        //* Gen StreamBlock
+        for (int j = 0; j < 16; j++)
+            StreamBlock[j] = CtrBlock[j];
+        AES_STD_Enc(StreamBlock, Key);
+
+        //* Increment CtrBlock (First 4 bytes as uint32_t LE)
+        ((uint32_t*) CtrBlock)[0]++;
+
+        //* Encrypt Plaintext
+        for (int j = 0; j < 16; j++)
+            Plaintext[j] ^= StreamBlock[j];
+    }
+    //* Gen StreamBlock
+    for (int j = 0; j < 16; j++)
+        StreamBlock[j] = CtrBlock[j];
+    AES_STD_Enc(StreamBlock, Key);
+
+    //* Encrypt Plaintext (Incomplete block)
+    for (size_t j = 0; j < Size%16; j++)
+        Plaintext[Size-(Size%16)+j] ^= StreamBlock[j];
+
     return;
 }
 
