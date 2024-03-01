@@ -786,6 +786,9 @@ static void SIVDeriveKeys(const uint8_t* MasterKey, const uint8_t* IV, uint8_t* 
 static void PolyVal()
 {
     // GHash but GCM-SIV
+    // x^128 + x^127 + x^126 + x^121 + 1    0x__               Here would be 7<-0 in bits to polynomial
+    // 0b11000010...0b00000001              First then last byte, rest is 0, xor 0xC2 and then 0x01 at biggest, then smallest byte.
+    // x^128 + x^7 + x^2 + x + 1            0xE1   0b11100001, reverse order apparently? here is 0->7 in bits to polynomial
     return;
 }
 
