@@ -110,6 +110,8 @@ static void GHash(const uint8_t* H, const uint8_t* Block, size_t Size, uint8_t* 
 /// @note This function works forwards and backwards. Plaintext is encrypted on the first run, and decrypted on the second (identical) run.
 static void GCTR(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* ICB);
 
+static void SIVDeriveKeys(const uint8_t* MasterKey, const uint8_t* IV, uint8_t* EncKey, uint8_t* AuthKey);
+
 /// @brief Applies SBox[] to a Byte, but via calculations instead of an array.
 /// @returns SBox[Byte].
 static uint8_t SBoxFunc(uint8_t Byte);

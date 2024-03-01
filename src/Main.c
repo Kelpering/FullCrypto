@@ -17,16 +17,18 @@ int main()
     uint8_t *Key = AES_KeyGen256(time(NULL));
     uint8_t *IV = AES_IVGen(time(NULL), 12);
 
-    uint8_t* Tag = AES_GCM_Enc(Plaintext, sizeof(Plaintext), AAD, sizeof(AAD), Key, IV);
-    PrintInfo(Plaintext, sizeof(Plaintext), false); 
-    PrintInfo(AAD, sizeof(AAD), true);
-    PrintInfo(Tag, 16, false);
+    // uint8_t* Tag = AES_GCM_Enc(Plaintext, sizeof(Plaintext), AAD, sizeof(AAD), Key, IV);
+    // PrintInfo(Plaintext, sizeof(Plaintext), false); 
+    // PrintInfo(AAD, sizeof(AAD), true);
+    // PrintInfo(Tag, 16, false);
     
-    bool IsValid = AES_GCM_Dec(Plaintext, sizeof(Plaintext), AAD, sizeof(AAD), Tag, Key, IV);
-    printf("\nIsValid: %s", (IsValid) ? "true" : "false");
-    PrintInfo(Plaintext, sizeof(Plaintext), IsValid); 
+    // bool IsValid = AES_GCM_Dec(Plaintext, sizeof(Plaintext), AAD, sizeof(AAD), Tag, Key, IV);
+    // printf("\nIsValid: %s", (IsValid) ? "true" : "false");
+    // PrintInfo(Plaintext, sizeof(Plaintext), IsValid); 
     
-    free(Tag);  //! Must de-allocate Tag
+    // free(Tag);  //! Must de-allocate Tag
+    AES_GCM_SIV_Enc(Plaintext, sizeof(Plaintext), AAD, sizeof(AAD), Key, IV);
+
     return 0;
 }
 
