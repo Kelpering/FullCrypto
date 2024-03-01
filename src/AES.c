@@ -345,11 +345,10 @@ bool AES_GCM_Dec(const uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, si
 
 //? AES-GCM-SIV Implementation
 
-uint8_t* AES_GCM_SIV_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV)
+SivArr AES_GCM_SIV_Enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV)
 {
     // Slower, but nonce resistant. So only advantages from my standpoint
-    // Requires some amount of functionality from the previous, but a lot of changes exist.
-    // Ciphertext is 16 bytes longer, hopefully the tag.
+    // Ciphertext is 16 bytes longer, not the tag
     // AES-256 implementation
     //https://datatracker.ietf.org/doc/html/rfc8452
     //* 32-byte key
@@ -383,15 +382,15 @@ uint8_t* AES_GCM_SIV_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, s
     //? SivCtr
     // etc...
 
+    // Test vector
     uint8_t* EncKey = malloc(32);
     uint8_t* AuthKey = malloc(16);
     uint8_t Key2[32] = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, };
     uint8_t IV2[12] = {0x03,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
 
-    // SIVD
-    SIVDeriveKeys(Key2, IV2, EncKey, AuthKey);
     
-    return NULL;
+    
+    return (SivArr){NULL, 0, NULL};
 }
 
 bool AES_GCM_SIV_Dec()
