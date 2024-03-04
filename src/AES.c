@@ -389,7 +389,7 @@ SivArr AES_GCM_SIV_Enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* AA
     uint8_t IV2[12] = {0x03,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
 
     
-    
+    //Ciph, Size, Tag
     return (SivArr){NULL, 0, NULL};
 }
 

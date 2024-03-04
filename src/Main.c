@@ -12,10 +12,10 @@ void PrintInfo(uint8_t* Array, size_t Size, bool isString);
 
 int main()
 {   
-    uint8_t Plaintext[] = "This is some test data.";
+    uint8_t Plaintext[] = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
     uint8_t AAD[] = "AAD TEST DATA";
-    uint8_t *Key = AES_KeyGen256(time(NULL));
-    uint8_t *IV = AES_IVGen(time(NULL), 12);
+    uint8_t Key[] = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    uint8_t IV[] = {0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
     // uint8_t* Tag = AES_GCM_Enc(Plaintext, sizeof(Plaintext), AAD, sizeof(AAD), Key, IV);
     // PrintInfo(Plaintext, sizeof(Plaintext), false); 
@@ -28,7 +28,8 @@ int main()
     
     // free(Tag);  //! Must de-allocate Tag
     AES_GCM_SIV_Enc(Plaintext, sizeof(Plaintext), AAD, sizeof(AAD), Key, IV);
-
+    //Tag: 843122130f7364b761e0b97427e3df28
+    //Result: c2ef328e5c71c83b843122130f7364b761e0b97427e3df28
     return 0;
 }
 

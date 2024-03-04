@@ -86,7 +86,7 @@ typedef struct
     uint8_t* Tag;           // Authorization Tag, allocated 16 bytes.
 } SivArr;
 
-SivArr AES_GCM_SIV_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV);
+SivArr AES_GCM_SIV_Enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV);
 
 //* Non-standard generator functions
 
