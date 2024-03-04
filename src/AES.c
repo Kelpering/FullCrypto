@@ -789,6 +789,39 @@ static void PolyVal()
     // x^128 + x^127 + x^126 + x^121 + 1    0x__               Here would be 7<-0 in bits to polynomial
     // 0b11000010...0b00000001              First then last byte, rest is 0, xor 0xC2 and then 0x01 at biggest, then smallest byte.
     // x^128 + x^7 + x^2 + x + 1            0xE1   0b11100001, reverse order apparently? here is 0->7 in bits to polynomial
+    //? Each block is a uint8_t[16] array, which represents a 128-bit number.
+    //! Temp GHash code
+    uint8_t XCpy[16];
+    uint8_t YCpy[16];
+    for (int i = 0 ; i < 16; i++)
+    {
+        XCpy[i] = X[i];
+        YCpy[i] = Y[i];
+        Result[i] = 0;
+    }
+
+    for (int i = 0; i < 128; i++)
+    {
+        if (BitArr128(YCpy, i) == 1)
+            for (int i = 0 ; i < 16; i++)
+                Result[i] ^= XCpy[i];
+
+        if (BitArr128(XCpy, 127) == 0)
+        {            
+            for (int i = 15; i > 0; i--)
+                XCpy[i] = ((XCpy[i-1] & 1) << 7) | (XCpy[i] >> 1);
+            XCpy[0] = (XCpy[0] >> 1);
+        }
+        else
+        {
+            for (int i = 15; i > 0; i--)
+                XCpy[i] = ((XCpy[i-1] & 1) << 7) | (XCpy[i] >> 1);
+            XCpy[0] = (XCpy[0] >> 1);
+            
+            //* V ^= R
+            XCpy[0] ^= 0xE1;
+        }
+    }
     return;
 }
 
