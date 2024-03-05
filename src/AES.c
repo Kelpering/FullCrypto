@@ -388,6 +388,14 @@ SivArr AES_GCM_SIV_Enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* AA
     uint8_t Key2[32] = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, };
     uint8_t IV2[12] = {0x03,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
 
+    uint8_t X[16] = {};
+    uint8_t Y[16] = {};
+
+    SBlockMul(X, Y, X);
+
+    for (size_t i = 0; i < 16; i++)
+        printf("0x%.2X ", X[i]);
+
     
     //Ciph, Size, Tag
     return (SivArr){NULL, 0, NULL};
@@ -791,6 +799,11 @@ static void PolyVal()
     // x^128 + x^7 + x^2 + x + 1            0xE1   0b11100001, reverse order apparently? here is 0->7 in bits to polynomial
     //? Each block is a uint8_t[16] array, which represents a 128-bit number.
     //! Temp GHash code
+    
+}
+
+static void SBlockMul(const uint8_t* X, const uint8_t* Y, uint8_t* Result)
+{
     uint8_t XCpy[16];
     uint8_t YCpy[16];
     for (int i = 0 ; i < 16; i++)
@@ -802,11 +815,11 @@ static void PolyVal()
 
     for (int i = 0; i < 128; i++)
     {
-        if (BitArr128(YCpy, i) == 1)
+        if (SivBitArr(YCpy, i) == 1)
             for (int i = 0 ; i < 16; i++)
                 Result[i] ^= XCpy[i];
 
-        if (BitArr128(XCpy, 127) == 0)
+        if (SivBitArr(XCpy, 127) == 0)
         {            
             for (int i = 15; i > 0; i--)
                 XCpy[i] = ((XCpy[i-1] & 1) << 7) | (XCpy[i] >> 1);
@@ -819,7 +832,14 @@ static void PolyVal()
             XCpy[0] = (XCpy[0] >> 1);
             
             //* V ^= R
-            XCpy[0] ^= 0xE1;
+            //* X[0] is First byte in 128-bit num in array AAAA...AAA0 = X[0]
+            // XCpy[0] ^= 0xE1; // 11100001
+            //! This code here suggests that XCpy is little-endian.
+            //! Assuming XCpy is little endian, test needed.
+            XCpy[0]  ^= 0b11000010; // Polynomial is reversed in bit order, not byte order.
+            XCpy[15] ^= 0b00000001;
+            //x^127 + x^126 + x^121 + 1 (normal)
+            // 0b11000010 ... 0b00000001
         }
     }
     return;

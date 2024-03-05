@@ -15,6 +15,11 @@
 /// @param bit The bit to access, from 0-127.
 #define BitArr128(x, bit) ((x[bit>>3] >> (7-(bit%8))) & 1)
 
+/// @brief Accesses byte array X as if it were a bit array.
+/// @param x A uint8_t[16].
+/// @param bit The bit to access, from 0-127.
+#define SivBitArr(x, bit) ((x[bit>>3] >> ((bit%8))) & 1)
+
 /// @brief SBox array to allow for much faster encryption.
 static uint8_t SBox[256];
 
@@ -93,6 +98,8 @@ static void GInc32(uint8_t* Block);
 /// @param Y A uint8_t[16] that represents a 128-bit number.
 /// @param Result The product, can be X, Y, or any other uint8_t[16].
 static void GBlockMul(const uint8_t* X, const uint8_t* Y, uint8_t* Result);
+
+static void SBlockMul(const uint8_t* X, const uint8_t* Y, uint8_t* Result);
 
 /// @brief Performs the GHash on Block, of Size bytes. If Size is not a multiple of 16, 0's will be padded to the end.
 /// @param H The Hash Subkey, internal to GCM.
