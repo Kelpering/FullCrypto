@@ -810,35 +810,28 @@ static void SIVDeriveKeys(const uint8_t* MasterKey, const uint8_t* IV, uint8_t* 
 static void PolyVal(const uint8_t* H, const uint8_t* Block, size_t Size, uint8_t* Output)
 {
     //* Dot Constant (Little Endian)
+    //* Dot (X,Y) = X*Y*Dot;
     const uint8_t Dot[16] = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x92};
 
-
-    //* This code looks solid, but isn't verified.
-    //* I can't spot any difference in how the action is performed.
-    //* Only issue might be SBlockMul and the endian issues.
-    //* H can't be the issue, as I tested SBlockMul against an identical hex string.
-    //* The Block could be, but the segments are fine.
     for (size_t i = 0; i < (Size>>4); i++)
     {
         for (int j = 0; j < 16; j++)
             Output[j] ^= Block[i*16+j];
-        //* Dot (X, Y) = (X * Y * Dot)
         SBlockMul(Output, H, Output);
         SBlockMul(Output, Dot, Output);
     }
     
     //* If final Block is incomplete, pad with 0's first
-    //! Removing this code snippet for now, to verify that PolyVal works.
-    // if (Size % 16 != 0)
-    // {
-    //     for (size_t j = 0; j < Size%16; j++)
-    //         Output[j] ^= Block[Size-(Size%16)+j];
-    //     for (int j = Size%16; j < 16; j++)
-    //                 Output[j] ^= 0;
-    //     //* Dot (X, Y) = (X * Y * Dot)
-    //     SBlockMul(Output, H, Output);
-    //     SBlockMul(Output, Dot, Output);
-    // }
+    if (Size % 16 != 0)
+    {
+        for (size_t j = 0; j < Size%16; j++)
+            Output[j] ^= Block[Size-(Size%16)+j];
+        for (int j = Size%16; j < 16; j++)
+                    Output[j] ^= 0;
+        //* Dot (X, Y) = (X * Y * Dot)
+        SBlockMul(Output, H, Output);
+        SBlockMul(Output, Dot, Output);
+    }
     
 }
 
