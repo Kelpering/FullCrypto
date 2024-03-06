@@ -403,6 +403,12 @@ SivArr AES_GCM_SIV_Enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* AA
     uint8_t Output[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
     //f7a3b47b846119fae5b7866cf5e5b77e
     PolyVal(H, block, 32, Output);
+    // As a worked example:
+    //   let H = 25629347589242761d31f826ba4b757b,
+    //       X_1 = 4f4f95668c83dfb6401762bb2d01a262, and
+    //       X_2 = d1a24ddd2721d006bbe45f20d3c9f362.
+    //   POLYVAL(H, X_1, X_2) = f7a3b47b846119fae5b7866cf5e5b77e.
+
 
     for (size_t i = 0; i < 16; i++)
         printf("%.2x", Output[i]);
