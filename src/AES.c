@@ -392,7 +392,9 @@ SivArr AES_GCM_SIV_Enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* AA
     uint8_t X[16] = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
     // uint8_t Y[16] = {0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};   // GBlockMul
     uint8_t Y[16] = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};   // SBlockMul
-
+    // Answer should be 0x02
+    // Double check the SBlockMul input block here. Mult against X, assumed X^1, this is assumed decimal (2)
+    // Representation between SBlockMul and GBlockMul are very different.
     SBlockMul(X, Y, X);
 
     for (size_t i = 0; i < 16; i++)
@@ -806,48 +808,57 @@ static void PolyVal()
 
 static void SBlockMul(const uint8_t* X, const uint8_t* Y, uint8_t* Result)
 {
+    //* X and Y are Little-Endian
+    //* They are currently read from bit order high to low (left to right) 89ABCDEF 01234567
+    //* Change that to be from bit order low to high (right to left)       FEDCBA98 76543210
     uint8_t XCpy[16];
     uint8_t YCpy[16];
-    //* Fill in reverse?
-    //! After reverse, guaranteed returns bitstring of 0's. Unknown why.
     for (int i = 0 ; i < 16; i++)
     {
-        XCpy[15-i] = X[i];
-        YCpy[15-i] = Y[i];
+        XCpy[i] = X[i];
+        YCpy[i] = Y[i];
         Result[i] = 0;
     }
 
     for (int i = 0; i < 128; i++)
     {
-        //! This might need some reversal.
-        //! SivBitArr is probably broken, as X and Y Cpy are no longer little endian
-        //! SivBitArr is reversed now.
+        //* BitArr is depedent, double check math on BitArr. Currently pulls Little-Endian, left to right (76543210)
         if (SivBitArr(YCpy, i) == 1)
             for (int i = 0 ; i < 16; i++)
-                Result[15-i] ^= XCpy[i];
+                Result[i] ^= XCpy[i];
 
+        //* BitArr is dependent, Shift is depedent
         if (SivBitArr(XCpy, 127) == 0)
         {            
+            // Bigger bits -> Smaller bits
+            // x[14] -> x[15]
+            // x[15] = (x[14] & 1) ++ (X[15] >> 1) = aaaaaaa(a) ++ (bbbbbbb)b = abbbbbbb
+
+            // FEDCBA98 76543210 -> EDCBA98_ 6543210F
+            // Bigger bits -> Smaller bits
+            // x[14] -> x[15]
+            // x[15] = (x[15] << 1) ++ (x[14] & 0x80) = (bbbbbbb)b + (a)aaaaaaa = bbbbbbba 
+            // for (int i = 15; i > 0; i--)
+                // XCpy[i] = ((XCpy[i-1] & 1) << 7) | (XCpy[i] >> 1);
+            // XCpy[0] = (XCpy[0] >> 1);
+            //! Complete guess here, but this follows with previous work.
             for (int i = 15; i > 0; i--)
-                XCpy[i] = ((XCpy[i-1] & 1) << 7) | (XCpy[i] >> 1);
-            XCpy[0] = (XCpy[0] >> 1);
+                XCpy[i] = ((XCpy[i]) << 1) | (XCpy[i-1] >> 7);
+            XCpy[0] = (XCpy[0] << 1);
         }
         else
         {
+            // for (int i = 15; i > 0; i--)
+            //     XCpy[i] = ((XCpy[i-1] & 1) << 7) | (XCpy[i] >> 1);
+            // XCpy[0] = (XCpy[0] >> 1);
             for (int i = 15; i > 0; i--)
-                XCpy[i] = ((XCpy[i-1] & 1) << 7) | (XCpy[i] >> 1);
-            XCpy[0] = (XCpy[0] >> 1);
+                XCpy[i] = ((XCpy[i]) << 1) | (XCpy[i-1] >> 7);
+            XCpy[0] = (XCpy[0] << 1);
             
             //* V ^= R
-            //* X[0] is First byte in 128-bit num in array AAAA...AAA0 = X[0]
-            // XCpy[0] ^= 0xE1; // 11100001
-            //! This code here suggests that XCpy is little-endian.
-            //! Assuming XCpy is little endian, test needed.
-            //! Reversed 15 and 0 here, as it is reversed in Siv now to be big endian.
-            XCpy[15] ^= 0b11000010; // Polynomial is reversed in bit order, not byte order.
-            XCpy[0]  ^= 0b00000001;
-            //x^127 + x^126 + x^121 + 1 (normal)
-            // 0b11000010 ... 0b00000001
+            //! Endian-ness accounted for, and bit order.
+            XCpy[0] ^= 0b11000010;
+            XCpy[15]  ^= 0b00000001;
         }
     }
     return;

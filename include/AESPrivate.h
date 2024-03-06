@@ -18,7 +18,7 @@
 /// @brief Accesses byte array X as if it were a bit array.
 /// @param x A uint8_t[16].
 /// @param bit The bit to access, from 0-127.
-#define SivBitArr(x, bit) ((x[15-(bit>>3)] >> ((bit%8))) & 1)
+#define SivBitArr(x, bit) ((x[bit>>3] >> ((bit%8))) & 1)
 
 /// @brief SBox array to allow for much faster encryption.
 static uint8_t SBox[256];
