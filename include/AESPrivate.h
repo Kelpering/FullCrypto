@@ -15,9 +15,7 @@
 /// @param bit The bit to access, from 0-127.
 #define BitArr128(x, bit) ((x[bit>>3] >> (7-(bit%8))) & 1)
 
-/// @brief Accesses byte array X as if it were a bit array.
-/// @param x A uint8_t[16].
-/// @param bit The bit to access, from 0-127.
+// The SivBitArr accesses byte array similar to BitArr128, but the key difference is that it SHOULD read the byte backwards. From 0->7 instead of 7->0
 #define SivBitArr(x, bit) ((x[bit>>3] >> ((bit%8))) & 1)
 
 /// @brief SBox array to allow for much faster encryption.

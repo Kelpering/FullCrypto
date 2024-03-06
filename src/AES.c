@@ -880,9 +880,22 @@ static void SBlockMul(const uint8_t* X, const uint8_t* Y, uint8_t* Result)
             XCpy[0] = (XCpy[0] << 1);
             
             //* V ^= R
+<<<<<<< HEAD
+            //* X[0] is First byte in 128-bit num in array AAAA...AAA0 = X[0]
+            // XCpy[0] ^= 0xE1; // 11100001
+            //! This code here suggests that XCpy is little-endian.
+            //! Assuming XCpy is little endian, test needed.
+            XCpy[0]  ^= 0b11000010; // Polynomial is reversed in bit order, not byte order.
+            XCpy[15] ^= 0b00000001;
+            // XCpy[0]  ^= 0xC2; //* Should be the correct Hex translation of Prev 
+            // XCpy[15] ^= 0x01; 
+            //x^127 + x^126 + x^121 + 1 (normal)
+            // 0b11000010 ... 0b00000001
+=======
             //! Endian-ness accounted for, and bit order.
             XCpy[15] ^= 0b11000010;
             XCpy[0]  ^= 0b00000001;
+>>>>>>> 2eabb2e3d328a263567af34891aa1411c3fee16a
         }
     }
     return;
