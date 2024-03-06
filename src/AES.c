@@ -388,19 +388,25 @@ SivArr AES_GCM_SIV_Enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* AA
     uint8_t Key2[32] = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, };
     uint8_t IV2[12] = {0x03,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
 
-    //* Byte strings are read in Little-Endian
-    uint8_t X[16] = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-    // uint8_t Y[16] = {0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};   // GBlockMul
-    uint8_t Y[16] = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};   // SBlockMul
-    // Answer should be 0x02
-    // Double check the SBlockMul input block here. Mult against X, assumed X^1, this is assumed decimal (2)
-    // Representation between SBlockMul and GBlockMul are very different.
-    SBlockMul(X, Y, X);
+    // //* Byte strings are read in Little-Endian
+    // // uint8_t X[16] = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    // uint8_t X[16] = {0x9c, 0x98, 0xc0, 0x4d, 0xf9, 0x38, 0x7d, 0xed, 0x82, 0x81, 0x75, 0xa9, 0x2b, 0xa6, 0x52, 0xd8};
+    // // uint8_t Y[16] = {0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};   // GBlockMul
+    // uint8_t Y[16] = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};   // SBlockMul
+    // // Answer should be 0x02
+    // // Double check the SBlockMul input block here. Mult against X, assumed X^1, this is assumed decimal (2)
+    // // Representation between SBlockMul and GBlockMul are very different.
+    // SBlockMul(X, Y, X);
+
+    const uint8_t H[16] = {0x25, 0x62, 0x93, 0x47, 0x58, 0x92, 0x42, 0x76, 0x1d, 0x31, 0xf8, 0x26, 0xba, 0x4b, 0x75, 0x7b};
+    const uint8_t block[32] = {0x4f, 0x4f, 0x95, 0x66, 0x8c, 0x83, 0xdf, 0xb6, 0x40, 0x17, 0x62, 0xbb, 0x2d, 0x01, 0xa2, 0x62, 0xd1, 0xa2, 0x4d, 0xdd, 0x27, 0x21, 0xd0, 0x06, 0xbb, 0xe4, 0x5f, 0x20, 0xd3, 0xc9, 0xf3, 0x62};
+    uint8_t Output[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    //f7a3b47b846119fae5b7866cf5e5b77e
+    PolyVal(H, block, 32, Output);
 
     for (size_t i = 0; i < 16; i++)
-        printf("0x%.2X ", X[i]);
+        printf("%.2x", Output[i]);
 
-    
     //Ciph, Size, Tag
     return (SivArr){NULL, 0, NULL};
 }
@@ -795,14 +801,31 @@ static void SIVDeriveKeys(const uint8_t* MasterKey, const uint8_t* IV, uint8_t* 
     return;
 }
 
-static void PolyVal()
+static void PolyVal(const uint8_t* H, const uint8_t* Block, size_t Size, uint8_t* Output)
 {
-    // GHash but GCM-SIV
-    // x^128 + x^127 + x^126 + x^121 + 1    0x__               Here would be 7<-0 in bits to polynomial
-    // 0b11000010...0b00000001              First then last byte, rest is 0, xor 0xC2 and then 0x01 at biggest, then smallest byte.
-    // x^128 + x^7 + x^2 + x + 1            0xE1   0b11100001, reverse order apparently? here is 0->7 in bits to polynomial
-    //? Each block is a uint8_t[16] array, which represents a 128-bit number.
-    //! Temp GHash code
+    //* Dot Constant
+    const uint8_t Dot[16] = {0x92, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
+
+    for (size_t i = 0; i < (Size>>4); i++)
+    {
+        for (int j = 0; j < 16; j++)
+            Output[j] ^= Block[i*16+j];
+        //* Dot (X, Y) = (X * Y * Dot)
+        SBlockMul(Output, H, Output);
+        SBlockMul(Output, Dot, Output);
+    }
+    
+    //* If final Block is incomplete, pad with 0's first
+    if (Size % 16 != 0)
+    {
+        for (size_t j = 0; j < Size%16; j++)
+            Output[j] ^= Block[Size-(Size%16)+j];
+        for (int j = Size%16; j < 16; j++)
+                    Output[j] ^= 0;
+        //* Dot (X, Y) = (X * Y * Dot)
+        SBlockMul(Output, H, Output);
+        SBlockMul(Output, Dot, Output);
+    }
     
 }
 
@@ -838,27 +861,20 @@ static void SBlockMul(const uint8_t* X, const uint8_t* Y, uint8_t* Result)
             // Bigger bits -> Smaller bits
             // x[14] -> x[15]
             // x[15] = (x[15] << 1) ++ (x[14] & 0x80) = (bbbbbbb)b + (a)aaaaaaa = bbbbbbba 
-            // for (int i = 15; i > 0; i--)
-                // XCpy[i] = ((XCpy[i-1] & 1) << 7) | (XCpy[i] >> 1);
-            // XCpy[0] = (XCpy[0] >> 1);
-            //! Complete guess here, but this follows with previous work.
             for (int i = 15; i > 0; i--)
                 XCpy[i] = ((XCpy[i]) << 1) | (XCpy[i-1] >> 7);
             XCpy[0] = (XCpy[0] << 1);
         }
         else
         {
-            // for (int i = 15; i > 0; i--)
-            //     XCpy[i] = ((XCpy[i-1] & 1) << 7) | (XCpy[i] >> 1);
-            // XCpy[0] = (XCpy[0] >> 1);
             for (int i = 15; i > 0; i--)
                 XCpy[i] = ((XCpy[i]) << 1) | (XCpy[i-1] >> 7);
             XCpy[0] = (XCpy[0] << 1);
             
             //* V ^= R
             //! Endian-ness accounted for, and bit order.
-            XCpy[0] ^= 0b11000010;
-            XCpy[15]  ^= 0b00000001;
+            XCpy[15] ^= 0b11000010;
+            XCpy[0]  ^= 0b00000001;
         }
     }
     return;

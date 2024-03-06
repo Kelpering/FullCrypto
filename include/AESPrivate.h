@@ -119,6 +119,8 @@ static void GCTR(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint
 
 static void SIVDeriveKeys(const uint8_t* MasterKey, const uint8_t* IV, uint8_t* EncKey, uint8_t* AuthKey);
 
+static void PolyVal(const uint8_t* H, const uint8_t* Block, size_t Size, uint8_t* Output);
+
 /// @brief Applies SBox[] to a Byte, but via calculations instead of an array.
 /// @returns SBox[Byte].
 static uint8_t SBoxFunc(uint8_t Byte);
