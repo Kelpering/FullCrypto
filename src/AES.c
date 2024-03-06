@@ -810,6 +810,8 @@ static void SIVDeriveKeys(const uint8_t* MasterKey, const uint8_t* IV, uint8_t* 
 static void PolyVal(const uint8_t* H, const uint8_t* Block, size_t Size, uint8_t* Output)
 {
     //* Dot Constant
+    //* Dot constant into little endian?
+    //* Values in general, into little endian?
     const uint8_t Dot[16] = {0x92, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
 
     for (size_t i = 0; i < (Size>>4); i++)
