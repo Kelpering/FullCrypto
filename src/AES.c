@@ -388,8 +388,10 @@ SivArr AES_GCM_SIV_Enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* AA
     uint8_t Key2[32] = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, };
     uint8_t IV2[12] = {0x03,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
 
-    uint8_t X[16] = {};
-    uint8_t Y[16] = {};
+    //* Byte strings are read in Little-Endian
+    uint8_t X[16] = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    // uint8_t Y[16] = {0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};   // GBlockMul
+    uint8_t Y[16] = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};   // SBlockMul
 
     SBlockMul(X, Y, X);
 
@@ -806,18 +808,23 @@ static void SBlockMul(const uint8_t* X, const uint8_t* Y, uint8_t* Result)
 {
     uint8_t XCpy[16];
     uint8_t YCpy[16];
+    //* Fill in reverse?
+    //! After reverse, guaranteed returns bitstring of 0's. Unknown why.
     for (int i = 0 ; i < 16; i++)
     {
-        XCpy[i] = X[i];
-        YCpy[i] = Y[i];
+        XCpy[15-i] = X[i];
+        YCpy[15-i] = Y[i];
         Result[i] = 0;
     }
 
     for (int i = 0; i < 128; i++)
     {
+        //! This might need some reversal.
+        //! SivBitArr is probably broken, as X and Y Cpy are no longer little endian
+        //! SivBitArr is reversed now.
         if (SivBitArr(YCpy, i) == 1)
             for (int i = 0 ; i < 16; i++)
-                Result[i] ^= XCpy[i];
+                Result[15-i] ^= XCpy[i];
 
         if (SivBitArr(XCpy, 127) == 0)
         {            
@@ -836,8 +843,9 @@ static void SBlockMul(const uint8_t* X, const uint8_t* Y, uint8_t* Result)
             // XCpy[0] ^= 0xE1; // 11100001
             //! This code here suggests that XCpy is little-endian.
             //! Assuming XCpy is little endian, test needed.
-            XCpy[0]  ^= 0b11000010; // Polynomial is reversed in bit order, not byte order.
-            XCpy[15] ^= 0b00000001;
+            //! Reversed 15 and 0 here, as it is reversed in Siv now to be big endian.
+            XCpy[15] ^= 0b11000010; // Polynomial is reversed in bit order, not byte order.
+            XCpy[0]  ^= 0b00000001;
             //x^127 + x^126 + x^121 + 1 (normal)
             // 0b11000010 ... 0b00000001
         }
