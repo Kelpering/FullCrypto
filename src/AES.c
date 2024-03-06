@@ -401,7 +401,7 @@ SivArr AES_GCM_SIV_Enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* AA
     const uint8_t H[16] = {0x25, 0x62, 0x93, 0x47, 0x58, 0x92, 0x42, 0x76, 0x1d, 0x31, 0xf8, 0x26, 0xba, 0x4b, 0x75, 0x7b};
     const uint8_t block[32] = {0x4f, 0x4f, 0x95, 0x66, 0x8c, 0x83, 0xdf, 0xb6, 0x40, 0x17, 0x62, 0xbb, 0x2d, 0x01, 0xa2, 0x62, 0xd1, 0xa2, 0x4d, 0xdd, 0x27, 0x21, 0xd0, 0x06, 0xbb, 0xe4, 0x5f, 0x20, 0xd3, 0xc9, 0xf3, 0x62};
     uint8_t Output[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-    //f7a3b47b846119fae5b7866cf5e5b77e
+
     PolyVal(H, block, 32, Output);
     // As a worked example:
     //   let H = 25629347589242761d31f826ba4b757b,
@@ -810,10 +810,16 @@ static void SIVDeriveKeys(const uint8_t* MasterKey, const uint8_t* IV, uint8_t* 
 static void PolyVal(const uint8_t* H, const uint8_t* Block, size_t Size, uint8_t* Output)
 {
     //* Dot Constant
-    //* Dot constant into little endian?
-    //* Values in general, into little endian?
-    const uint8_t Dot[16] = {0x92, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
+    // const uint8_t Dot[16] = {0x92, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
+    //! Replace Dot with new dot, to account for Little Endian structure?
+    const uint8_t Dot[16] = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x92};
 
+
+    //* This code looks solid, but isn't verified.
+    //* I can't spot any difference in how the action is performed.
+    //* Only issue might be SBlockMul and the endian issues.
+    //* H can't be the issue, as I tested SBlockMul against an identical hex string.
+    //* The Block could be, but the segments are fine.
     for (size_t i = 0; i < (Size>>4); i++)
     {
         for (int j = 0; j < 16; j++)
@@ -824,16 +830,17 @@ static void PolyVal(const uint8_t* H, const uint8_t* Block, size_t Size, uint8_t
     }
     
     //* If final Block is incomplete, pad with 0's first
-    if (Size % 16 != 0)
-    {
-        for (size_t j = 0; j < Size%16; j++)
-            Output[j] ^= Block[Size-(Size%16)+j];
-        for (int j = Size%16; j < 16; j++)
-                    Output[j] ^= 0;
-        //* Dot (X, Y) = (X * Y * Dot)
-        SBlockMul(Output, H, Output);
-        SBlockMul(Output, Dot, Output);
-    }
+    //! Removing this code snippet for now, to verify that PolyVal works.
+    // if (Size % 16 != 0)
+    // {
+    //     for (size_t j = 0; j < Size%16; j++)
+    //         Output[j] ^= Block[Size-(Size%16)+j];
+    //     for (int j = Size%16; j < 16; j++)
+    //                 Output[j] ^= 0;
+    //     //* Dot (X, Y) = (X * Y * Dot)
+    //     SBlockMul(Output, H, Output);
+    //     SBlockMul(Output, Dot, Output);
+    // }
     
 }
 
@@ -880,22 +887,9 @@ static void SBlockMul(const uint8_t* X, const uint8_t* Y, uint8_t* Result)
             XCpy[0] = (XCpy[0] << 1);
             
             //* V ^= R
-<<<<<<< HEAD
-            //* X[0] is First byte in 128-bit num in array AAAA...AAA0 = X[0]
-            // XCpy[0] ^= 0xE1; // 11100001
-            //! This code here suggests that XCpy is little-endian.
-            //! Assuming XCpy is little endian, test needed.
-            XCpy[0]  ^= 0b11000010; // Polynomial is reversed in bit order, not byte order.
-            XCpy[15] ^= 0b00000001;
-            // XCpy[0]  ^= 0xC2; //* Should be the correct Hex translation of Prev 
-            // XCpy[15] ^= 0x01; 
-            //x^127 + x^126 + x^121 + 1 (normal)
-            // 0b11000010 ... 0b00000001
-=======
             //! Endian-ness accounted for, and bit order.
             XCpy[15] ^= 0b11000010;
             XCpy[0]  ^= 0b00000001;
->>>>>>> 2eabb2e3d328a263567af34891aa1411c3fee16a
         }
     }
     return;
