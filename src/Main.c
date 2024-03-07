@@ -21,6 +21,10 @@ int main()
     PrintInfo(Plaintext, sizeof(Plaintext), false);
     PrintInfo(Tag, 16, false);
     
+    bool valid = AES_GCM_SIV_Dec(Plaintext, sizeof(Plaintext), Tag, NULL, 0, Key, IV);
+    PrintInfo(Plaintext, sizeof(Plaintext), false);
+    // printf("BOOL: %d\n", valid);
+
     free(Tag);
     return 0;
 }

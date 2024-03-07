@@ -345,7 +345,7 @@ bool AES_GCM_Dec(const uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, si
 
 //? AES-GCM-SIV Implementation
 
-uint8_t* AES_GCM_SIV_Enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV)
+uint8_t* AES_GCM_SIV_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV)
 {
     //* Allocate and initialize EncKey and AuthKey
     uint8_t EncKey[32];
@@ -383,7 +383,7 @@ uint8_t* AES_GCM_SIV_Enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* 
     return Tag;
 }
 
-bool AES_GCM_SIV_Dec(const uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size_t ASize, const uint8_t* Tag, const uint8_t* Key, const uint8_t* IV)
+bool AES_GCM_SIV_Dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size_t ASize, const uint8_t* Tag, const uint8_t* Key, const uint8_t* IV)
 {
     //* Allocate and initialize EncKey and AuthKey
     uint8_t EncKey[32];
@@ -425,15 +425,21 @@ bool AES_GCM_SIV_Dec(const uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD
     //* Validate Tag in constant time.
     bool IsInvalid = false;
     for (int i = 0; i < 16; i++)
-        IsInvalid |= !(Tag == PolyHash);
+        IsInvalid |= !(Tag[i] == PolyHash[i]);
 
+    //* If invalid, then free Plaintext and exit
     if (IsInvalid)
+    {
+        free(Plaintext);
         return false;
-    
-    
-    
+    }
+    //* Else, overwrite Ciphertext with Plaintext
 
-    return false;
+    for (int i = 0; i < CSize; i++)
+        Ciphertext[i] = Plaintext[i];    
+    free(Plaintext);
+
+    return true;
 }
 
 
