@@ -345,95 +345,93 @@ bool AES_GCM_Dec(const uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, si
 
 //? AES-GCM-SIV Implementation
 
-SivArr AES_GCM_SIV_Enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV)
+uint8_t* AES_GCM_SIV_Enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV)
 {
-    // Slower, but nonce resistant. So only advantages from my standpoint
-    // Ciphertext is 16 bytes longer, not the tag
-    // AES-256 implementation
-    //https://datatracker.ietf.org/doc/html/rfc8452
-    //* 32-byte key
-    //* 12 byte nonce
-    //* Plaintext
-    //* AAD
-    //* Sizes for both.
-
-    //* Allocated in SivDeriveKeys
-    uint8_t* EncKey, AuthKey;
+    //* Allocate and initialize EncKey and AuthKey
+    uint8_t EncKey[32];
+    uint8_t AuthKey[16];
     SIVDeriveKeys(Key, IV, EncKey, AuthKey);
 
-    //PolyVal (in order): AAD(Padded) -> Plaintext(Padded) -> ASize(bit) ++ PSize(bit)
-    //PolyVal should auto pad AAD and Plaintext, and should be ran multiple times, like ghash.
-    // PolyVal(H = AuthKey, Above^, SizeAbove, Output[0's at first])
-    // Xor first 12 bytes of Output w/ IV
-    // Output[15]  &= 0x7F
-    // AES(EncKey, Output) == Tag
+    //* mallloc Tag (initialized to 0).
+    uint8_t* Tag = calloc(16, 1);
 
-    // ICB for SivCtr is Tag but Tag[15] |= 0x80
-    // SivCtr Plaintext == Ciphertext
-    // Check lengths, but Ciphertext should be 16 bytes more + tag.
-
-    // SIVDeriveKeys();
-    // Similar GHash (Padded AAD, Padded Plaintext, BitSizes) (Double check)
-    // Difference is the function, but the data itself seems to be the same. (except plaintext is not encrypted yet)
-    // S = PolyVal(Hash); (New GHash)
-    // S ^= IV, Then S[15] = S[15] & 0x7F (0b01111111)
-    // Tag = AES(EncKey, S)
+    //* Calculate Length Block for PolyVal later.
+    uint64_t LenBlock[2] = {(ASize<<3), (PSize<<3)};
     
-    // ICB = Tag
-    // ICB |= 0x80 (0b10000000)
-    // C = AES_CTR(EncKey, ICB, Plaintext)  
-    //! AES_CTR cannot be GCTR, they are entirely different.
-    //! If this is a full implement, I might add it just for the funny.
-    // C is direct (pointer)
-    // Tag is returned
+    //* Run PolyVal for AAD, Plaintext, LenBlock in sequence.
+    PolyVal(AuthKey, AAD, ASize, Tag);
+    PolyVal(AuthKey, Plaintext, PSize, Tag);
+    PolyVal(AuthKey, LenBlock, 16, Tag);
 
-    // /* == Validated
-    // /? == Unknown
-    // /! == Broken
-    // /  == Not implemented
+    //* Xor first 12 bytes of Tag with IV
+    for (int i = 0; i < 12; i++)
+        Tag[i] ^= IV[i];
 
-    //* SivDeriveKeys
-    //? PolyVal
-    //? SivCtr
-    // etc...
+    //* Clear MSB of last byte in Tag
+    Tag[15]  &= 0x7F;
 
-    // Test vector
-    uint8_t* EncKey = malloc(32);
-    uint8_t* AuthKey = malloc(16);
-    uint8_t Key2[32] = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, };
-    uint8_t IV2[12] = {0x03,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+    //* Produce final Tag version
+    AES_STD_Enc(Tag, EncKey);
 
-    // //* Byte strings are read in Little-Endian
-    // // uint8_t X[16] = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-    // uint8_t X[16] = {0x9c, 0x98, 0xc0, 0x4d, 0xf9, 0x38, 0x7d, 0xed, 0x82, 0x81, 0x75, 0xa9, 0x2b, 0xa6, 0x52, 0xd8};
-    // // uint8_t Y[16] = {0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};   // GBlockMul
-    // uint8_t Y[16] = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};   // SBlockMul
-    // // Answer should be 0x02
-    // // Double check the SBlockMul input block here. Mult against X, assumed X^1, this is assumed decimal (2)
-    // // Representation between SBlockMul and GBlockMul are very different.
-    // SBlockMul(X, Y, X);
+    //* Generates ICB for SivCtr
+    uint8_t ICB[16] = {Tag[0], Tag[1], Tag[2], Tag[3], Tag[4], Tag[5], Tag[6], Tag[7], Tag[8], Tag[9], Tag[10], Tag[11], Tag[12], Tag[13], Tag[14], (Tag[15] | 0x80)};
 
-    const uint8_t H[16] = {0x25, 0x62, 0x93, 0x47, 0x58, 0x92, 0x42, 0x76, 0x1d, 0x31, 0xf8, 0x26, 0xba, 0x4b, 0x75, 0x7b};
-    const uint8_t block[32] = {0x4f, 0x4f, 0x95, 0x66, 0x8c, 0x83, 0xdf, 0xb6, 0x40, 0x17, 0x62, 0xbb, 0x2d, 0x01, 0xa2, 0x62, 0xd1, 0xa2, 0x4d, 0xdd, 0x27, 0x21, 0xd0, 0x06, 0xbb, 0xe4, 0x5f, 0x20, 0xd3, 0xc9, 0xf3, 0x62};
-    uint8_t Output[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    //* Encrypt Plaintext with SivCtr (Ciphertext)
+    SivCTR(Plaintext, PSize, EncKey, ICB);
 
-    PolyVal(H, block, 32, Output);
-    // As a worked example:
-    //   let H = 25629347589242761d31f826ba4b757b,
-    //       X_1 = 4f4f95668c83dfb6401762bb2d01a262, and
-    //       X_2 = d1a24ddd2721d006bbe45f20d3c9f362.
-    //   POLYVAL(H, X_1, X_2) = f7a3b47b846119fae5b7866cf5e5b77e.
-
-
-    for (size_t i = 0; i < 16; i++)
-        printf("%.2x", Output[i]);
-
-    //Ciph, Size, Tag
-    return (SivArr){NULL, 0, NULL};
+    //! Needs to be de-allocated
+    return Tag;
 }
 
-bool AES_GCM_SIV_Dec()
+bool AES_GCM_SIV_Dec(const uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size_t ASize, const uint8_t* Tag, const uint8_t* Key, const uint8_t* IV)
 {
+    //* Allocate and initialize EncKey and AuthKey
+    uint8_t EncKey[32];
+    uint8_t AuthKey[16];
+    SIVDeriveKeys(Key, IV, EncKey, AuthKey);
+
+    //* Generates ICV for SivCtr
+    uint8_t ICB[16] = {Tag[0], Tag[1], Tag[2], Tag[3], Tag[4], Tag[5], Tag[6], Tag[7], Tag[8], Tag[9], Tag[10], Tag[11], Tag[12], Tag[13], Tag[14], (Tag[15] | 0x80)};
+
+    //* Malloc a Plaintext for indirect encryption, to prevent unauthenticated output.
+    uint8_t* Plaintext = malloc(CSize);
+    for(int i = 0; i < CSize; i++)
+        Plaintext[i] = Ciphertext[i];
+
+    //* Decrypt Plaintext with SivCtr
+    SivCTR(Plaintext, CSize, EncKey, ICB);
+
+    //* mallloc Tag (initialized to 0).
+    uint8_t* PolyHash = calloc(16, 1);
+
+    //* Calculate Length Block for PolyVal later.
+    uint64_t LenBlock[2] = {(ASize<<3), (CSize<<3)};
+    
+    //* Run PolyVal for AAD, Plaintext, LenBlock in sequence.
+    PolyVal(AuthKey, AAD, ASize, PolyHash);
+    PolyVal(AuthKey, Plaintext, CSize, PolyHash);
+    PolyVal(AuthKey, LenBlock, 16, PolyHash);
+
+    //* Xor first 12 bytes of Tag with IV
+    for (int i = 0; i < 12; i++)
+        PolyHash[i] ^= IV[i];
+
+    //* Clear MSB of last byte in Tag
+    PolyHash[15]  &= 0x7F;
+
+    //* Produce final Tag version
+    AES_STD_Enc(PolyVal, EncKey);
+
+    //* Validate Tag in constant time.
+    bool IsInvalid = false;
+    for (int i = 0; i < 16; i++)
+        IsInvalid |= !(Tag == PolyHash);
+
+    if (IsInvalid)
+        return false;
+    
+    
+    
 
     return false;
 }

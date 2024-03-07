@@ -75,18 +75,7 @@ uint8_t* AES_GCM_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_
 /// @returns A boolean value on whether or not the decryption was valid. If invalid, Ciphertext was not altered.
 bool AES_GCM_Dec(const uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size_t ASize, const uint8_t* Tag, const uint8_t* Key, const uint8_t* IV);
 
-
-//* GCM-SIV
-
-// Return structure for 
-typedef struct
-{
-    uint8_t* ReturnText;    // allocated ByteArr to return.
-    size_t   Size;          // Size of ReturnText in bytes.
-    uint8_t* Tag;           // Authorization Tag, allocated 16 bytes.
-} SivArr;
-
-SivArr AES_GCM_SIV_Enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV);
+uint8_t* AES_GCM_SIV_Enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV);
 
 //* Non-standard generator functions
 

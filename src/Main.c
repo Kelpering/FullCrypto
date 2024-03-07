@@ -13,23 +13,15 @@ void PrintInfo(uint8_t* Array, size_t Size, bool isString);
 int main()
 {   
     uint8_t Plaintext[] = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-    uint8_t AAD[] = "AAD TEST DATA";
+    // uint8_t AAD[] = "AAD TEST DATA";
     uint8_t Key[] = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
     uint8_t IV[] = {0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-    // uint8_t* Tag = AES_GCM_Enc(Plaintext, sizeof(Plaintext), AAD, sizeof(AAD), Key, IV);
-    // PrintInfo(Plaintext, sizeof(Plaintext), false); 
-    // PrintInfo(AAD, sizeof(AAD), true);
-    // PrintInfo(Tag, 16, false);
+    uint8_t* Tag = AES_GCM_SIV_Enc(Plaintext, sizeof(Plaintext), NULL, 0, Key, IV);
+    PrintInfo(Plaintext, sizeof(Plaintext), false);
+    PrintInfo(Tag, 16, false);
     
-    // bool IsValid = AES_GCM_Dec(Plaintext, sizeof(Plaintext), AAD, sizeof(AAD), Tag, Key, IV);
-    // printf("\nIsValid: %s", (IsValid) ? "true" : "false");
-    // PrintInfo(Plaintext, sizeof(Plaintext), IsValid); 
-    
-    // free(Tag);  //! Must de-allocate Tag
-    AES_GCM_SIV_Enc(Plaintext, sizeof(Plaintext), AAD, sizeof(AAD), Key, IV);
-    //Tag: 843122130f7364b761e0b97427e3df28
-    //Result: c2ef328e5c71c83b843122130f7364b761e0b97427e3df28
+    free(Tag);
     return 0;
 }
 
@@ -43,7 +35,7 @@ void PrintInfo(uint8_t* Array, size_t Size, bool isString)
     {
         printf("\nData is not string.\nSize: %lu\n", Size);
         for (size_t i = 0; i < Size; i++)
-            printf("0x%.2X ", Array[i]);
+            printf("%.2x", Array[i]);
     }
     printf("\n");
     return;
