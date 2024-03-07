@@ -357,6 +357,21 @@ SivArr AES_GCM_SIV_Enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* AA
     //* AAD
     //* Sizes for both.
 
+    //* Allocated in SivDeriveKeys
+    uint8_t* EncKey, AuthKey;
+    SIVDeriveKeys(Key, IV, EncKey, AuthKey);
+
+    //PolyVal (in order): AAD(Padded) -> Plaintext(Padded) -> ASize(bit) ++ PSize(bit)
+    //PolyVal should auto pad AAD and Plaintext, and should be ran multiple times, like ghash.
+    // PolyVal(H = AuthKey, Above^, SizeAbove, Output[0's at first])
+    // Xor first 12 bytes of Output w/ IV
+    // Output[15]  &= 0x7F
+    // AES(EncKey, Output) == Tag
+
+    // ICB for SivCtr is Tag but Tag[15] |= 0x80
+    // SivCtr Plaintext == Ciphertext
+    // Check lengths, but Ciphertext should be 16 bytes more + tag.
+
     // SIVDeriveKeys();
     // Similar GHash (Padded AAD, Padded Plaintext, BitSizes) (Double check)
     // Difference is the function, but the data itself seems to be the same. (except plaintext is not encrypted yet)
@@ -378,7 +393,7 @@ SivArr AES_GCM_SIV_Enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* AA
     // /  == Not implemented
 
     //* SivDeriveKeys
-    // PolyVal
+    //? PolyVal
     //? SivCtr
     // etc...
 
