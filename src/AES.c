@@ -297,7 +297,7 @@ uint8_t* AES_GCM_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_
     return Hash;
 }
 
-bool AES_GCM_Dec(const uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size_t ASize, const uint8_t* Tag, const uint8_t* Key, const uint8_t* IV)
+bool AES_GCM_Dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size_t ASize, const uint8_t* Tag, const uint8_t* Key, const uint8_t* IV)
 {
     //* Zero block (encrypted)
     uint8_t H[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
@@ -390,7 +390,7 @@ bool AES_GCM_SIV_Dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size
     uint8_t AuthKey[16];
     SIVDeriveKeys(Key, IV, EncKey, AuthKey);
 
-    //* Generates ICV for SivCtr
+    //* Generates ICB for SivCtr
     uint8_t ICB[16] = {Tag[0], Tag[1], Tag[2], Tag[3], Tag[4], Tag[5], Tag[6], Tag[7], Tag[8], Tag[9], Tag[10], Tag[11], Tag[12], Tag[13], Tag[14], (Tag[15] | 0x80)};
 
     //* Malloc a Plaintext for indirect encryption, to prevent unauthenticated output.
@@ -416,11 +416,9 @@ bool AES_GCM_SIV_Dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size
     for (int i = 0; i < 12; i++)
         PolyHash[i] ^= IV[i];
 
-    //* Clear MSB of last byte in Tag
+    //* Clear MSB of last byte in Tag, then encrypt.
     PolyHash[15]  &= 0x7F;
-
-    //* Produce final Tag version
-    AES_STD_Enc(PolyVal, EncKey);
+    AES_STD_Enc(PolyHash, EncKey);
 
     //* Validate Tag in constant time.
     bool IsInvalid = false;
@@ -761,23 +759,6 @@ static void GCTR(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint
 
 static void SIVDeriveKeys(const uint8_t* MasterKey, const uint8_t* IV, uint8_t* EncKey, uint8_t* AuthKey)
 {
-    //! Remove / rework when tested
-    //? MasterKey = 32-byte (AES-256)
-    //? AuthKey = Empty 16-byte
-    //? EncKey = Empty 32-byte
-    //* Message Auth Key (MAK) & Message Enc Key (MEK)
-
-    // 16 bytes (128-bit Tag)
-    // MAK = AES(key = KeyGenKey, block = LE32(0) || nonce)[8bytes] ||
-    //      AES(key=keyGenKey, block = LE32(1) || nonce)[8bytes]
-
-    // 32 bytes (256-bit AES-Key)
-    // MEK = AES(key = KeyGenKey, block = LE32(2) || nonce)[8bytes] ||
-    //      AES(key = KeyGenKey, block = LE32(3) || nonce)[8bytes] ||
-    //      AES(key = KeyGenKey, block = LE32(4) || nonce)[8bytes] ||
-    //      AES(key = KeyGenKey, block = LE32(5) || nonce)[8bytes] ||
-
-
     //? AuthKey
     //* Generates TempAuthKey for AuthKey (16 bytes)
     uint8_t TempAuthKey[2][16];
@@ -919,7 +900,9 @@ static void SivCTR(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const ui
         AES_STD_Enc(StreamBlock, Key);
 
         //* Increment CtrBlock (First 4 bytes as uint32_t LE)
+        //! Ctr Block wrap issue? Check on larger inputs
         ((uint32_t*) CtrBlock)[0]++;
+        
 
         //* Encrypt Plaintext
         for (int j = 0; j < 16; j++)
