@@ -106,7 +106,7 @@ void AES_STD_Dec(uint8_t* Ciphertext, const uint8_t* Key)
     //? Clear and de-allocate Expanded Key
     for (int i = 0; i < 240; i++)
         EKey[i] = 0;
-    free(EKey);     //! Free here is SegFaulting somehow, although I am unsure why.
+    free(EKey);
 
     //? Fill Data sideways
     Ciphertext[0] = State[0];
@@ -900,7 +900,6 @@ static void SivCTR(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const ui
         AES_STD_Enc(StreamBlock, Key);
 
         //* Increment CtrBlock (First 4 bytes as uint32_t LE)
-        //! Ctr Block wrap issue? Check on larger inputs
         ((uint32_t*) CtrBlock)[0]++;
 
         //* Encrypt Plaintext
