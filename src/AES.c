@@ -902,11 +902,10 @@ static void SivCTR(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const ui
         //* Increment CtrBlock (First 4 bytes as uint32_t LE)
         //! Ctr Block wrap issue? Check on larger inputs
         ((uint32_t*) CtrBlock)[0]++;
-        
 
         //* Encrypt Plaintext
         for (int j = 0; j < 16; j++)
-            Plaintext[j] ^= StreamBlock[j];
+            Plaintext[i*16+j] ^= StreamBlock[j];
     }
     //* Gen StreamBlock
     for (int j = 0; j < 16; j++)
