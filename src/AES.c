@@ -355,7 +355,7 @@ uint8_t* AES_GCM_SIV_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, s
     //* mallloc Tag (initialized to 0).
     uint8_t* Tag = calloc(16, 1);
 
-    //* Calculate Length Block for PolyVal later.
+    //* Calculate Length Block for PolyVal later. (Bit size)
     uint64_t LenBlock[2] = {(ASize<<3), (PSize<<3)};
     
     //* Run PolyVal for AAD, Plaintext, LenBlock in sequence.
@@ -425,19 +425,18 @@ bool AES_GCM_SIV_Dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size
     for (int i = 0; i < 16; i++)
         IsInvalid |= !(Tag[i] == PolyHash[i]);
 
-    //* If invalid, then free Plaintext and exit
+    //* Handle decryption if Tag happens to be invalid, never overwriting plaintext unless the check was successful.
     if (IsInvalid)
-    {
         free(Plaintext);
-        return false;
+    else
+    {
+        for (int i = 0; i < CSize; i++)
+            Ciphertext[i] = Plaintext[i];    
+        free(Plaintext);
+        return true;
     }
-    //* Else, overwrite Ciphertext with Plaintext
 
-    for (int i = 0; i < CSize; i++)
-        Ciphertext[i] = Plaintext[i];    
-    free(Plaintext);
-
-    return true;
+    return false;
 }
 
 
