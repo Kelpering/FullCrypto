@@ -106,7 +106,7 @@ void AES_STD_Dec(uint8_t* Ciphertext, const uint8_t* Key)
     //? Clear and de-allocate Expanded Key
     for (int i = 0; i < 240; i++)
         EKey[i] = 0;
-    free(EKey);     //! Free here is SegFaulting somehow, although I am unsure why.
+    free(EKey);
 
     //? Fill Data sideways
     Ciphertext[0] = State[0];
@@ -297,7 +297,7 @@ uint8_t* AES_GCM_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_
     return Hash;
 }
 
-bool AES_GCM_Dec(const uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size_t ASize, const uint8_t* Tag, const uint8_t* Key, const uint8_t* IV)
+bool AES_GCM_Dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size_t ASize, const uint8_t* Tag, const uint8_t* Key, const uint8_t* IV)
 {
     //* Zero block (encrypted)
     uint8_t H[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
@@ -340,6 +340,103 @@ bool AES_GCM_Dec(const uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, si
     //* Decipher Ciphertext and return true.
     GCTR(Ciphertext, CSize, Key, JInc);
     return true;
+}
+
+
+//? AES-GCM-SIV Implementation
+
+uint8_t* AES_GCM_SIV_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV)
+{
+    //* Allocate and initialize EncKey and AuthKey
+    uint8_t EncKey[32];
+    uint8_t AuthKey[16];
+    SIVDeriveKeys(Key, IV, EncKey, AuthKey);
+
+    //* mallloc Tag (initialized to 0).
+    uint8_t* Tag = calloc(16, 1);
+
+    //* Calculate Length Block for PolyVal later. (Bit size)
+    uint64_t LenBlock[2] = {(ASize<<3), (PSize<<3)};
+    
+    //* Run PolyVal for AAD, Plaintext, LenBlock in sequence.
+    PolyVal(AuthKey, AAD, ASize, Tag);
+    PolyVal(AuthKey, Plaintext, PSize, Tag);
+    PolyVal(AuthKey, LenBlock, 16, Tag);
+
+    //* Xor first 12 bytes of Tag with IV
+    for (int i = 0; i < 12; i++)
+        Tag[i] ^= IV[i];
+
+    //* Clear MSB of last byte in Tag
+    Tag[15]  &= 0x7F;
+
+    //* Produce final Tag version
+    AES_STD_Enc(Tag, EncKey);
+
+    //* Generates ICB for SivCtr
+    uint8_t ICB[16] = {Tag[0], Tag[1], Tag[2], Tag[3], Tag[4], Tag[5], Tag[6], Tag[7], Tag[8], Tag[9], Tag[10], Tag[11], Tag[12], Tag[13], Tag[14], (Tag[15] | 0x80)};
+
+    //* Encrypt Plaintext with SivCtr (Ciphertext)
+    SivCTR(Plaintext, PSize, EncKey, ICB);
+
+    //! Needs to be de-allocated
+    return Tag;
+}
+
+bool AES_GCM_SIV_Dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size_t ASize, const uint8_t* Tag, const uint8_t* Key, const uint8_t* IV)
+{
+    //* Allocate and initialize EncKey and AuthKey
+    uint8_t EncKey[32];
+    uint8_t AuthKey[16];
+    SIVDeriveKeys(Key, IV, EncKey, AuthKey);
+
+    //* Generates ICB for SivCtr
+    uint8_t ICB[16] = {Tag[0], Tag[1], Tag[2], Tag[3], Tag[4], Tag[5], Tag[6], Tag[7], Tag[8], Tag[9], Tag[10], Tag[11], Tag[12], Tag[13], Tag[14], (Tag[15] | 0x80)};
+
+    //* Malloc a Plaintext for indirect encryption, to prevent unauthenticated output.
+    uint8_t* Plaintext = malloc(CSize);
+    for(int i = 0; i < CSize; i++)
+        Plaintext[i] = Ciphertext[i];
+
+    //* Decrypt Plaintext with SivCtr
+    SivCTR(Plaintext, CSize, EncKey, ICB);
+
+    //* mallloc Tag (initialized to 0).
+    uint8_t* PolyHash = calloc(16, 1);
+
+    //* Calculate Length Block for PolyVal later.
+    uint64_t LenBlock[2] = {(ASize<<3), (CSize<<3)};
+    
+    //* Run PolyVal for AAD, Plaintext, LenBlock in sequence.
+    PolyVal(AuthKey, AAD, ASize, PolyHash);
+    PolyVal(AuthKey, Plaintext, CSize, PolyHash);
+    PolyVal(AuthKey, LenBlock, 16, PolyHash);
+
+    //* Xor first 12 bytes of Tag with IV
+    for (int i = 0; i < 12; i++)
+        PolyHash[i] ^= IV[i];
+
+    //* Clear MSB of last byte in Tag, then encrypt.
+    PolyHash[15]  &= 0x7F;
+    AES_STD_Enc(PolyHash, EncKey);
+
+    //* Validate Tag in constant time.
+    bool IsInvalid = false;
+    for (int i = 0; i < 16; i++)
+        IsInvalid |= !(Tag[i] == PolyHash[i]);
+
+    //* Handle decryption if Tag happens to be invalid, never overwriting plaintext unless the check was successful.
+    if (IsInvalid)
+        free(Plaintext);
+    else
+    {
+        for (int i = 0; i < CSize; i++)
+            Ciphertext[i] = Plaintext[i];    
+        free(Plaintext);
+        return true;
+    }
+
+    return false;
 }
 
 
@@ -655,6 +752,167 @@ static void GCTR(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint
    AES_STD_Enc(Temp, Key);
    for (size_t j = 0; j < Size%16; j++)
         Plaintext[Size-(Size%16)+j] ^= Temp[j];
+
+    return;
+}
+
+static void SIVDeriveKeys(const uint8_t* MasterKey, const uint8_t* IV, uint8_t* EncKey, uint8_t* AuthKey)
+{
+    //? AuthKey
+    //* Generates TempAuthKey for AuthKey (16 bytes)
+    uint8_t TempAuthKey[2][16];
+    for (int i = 0; i < 2; i++)
+    {
+        //* Should be little endian
+        ((uint32_t*) TempAuthKey[i])[0] = i;
+
+        //* Rest is IV
+        for (int j = 0; j < 12; j++)
+            TempAuthKey[i][j+4] =  IV[j];
+    }
+
+    //* Encrypts each block in TempAuthKey
+    for (int i = 0; i < 2; i++)
+        AES_STD_Enc(TempAuthKey[i], MasterKey);
+
+    //* Assigns the first 8 bytes of TempAuthKey[i] to AuthKey (16 bytes)
+    for (int i = 0; i < 2; i++)
+        for (int j = 0; j < 8; j++)
+            AuthKey[i*8+j] = TempAuthKey[i][j];
+
+
+    //? EncKey
+    //* Generates TempEncKey for EncKey (32 bytes)
+    uint8_t TempEncKey[4][16];
+    for (int i = 0; i < 4; i++)
+    {
+        //* Should be little endian
+        ((uint32_t*) TempEncKey[i])[0] = i+2;
+
+        //* Rest is IV
+        for (int j = 0; j < 12; j++)
+            TempEncKey[i][j+4] =  IV[j];
+    }
+
+    //* Encrypts each block in TempEncKey
+    for (int i = 0; i < 4; i++)
+        AES_STD_Enc(TempEncKey[i], MasterKey);
+    
+    //* Assigns the first 8 bytes of TempEncKey[i] to EncKey (32 bytes)
+    for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 8; j++)
+            EncKey[i*8+j] = TempEncKey[i][j];
+    
+    return;
+}
+
+static void PolyVal(const uint8_t* H, const uint8_t* Block, size_t Size, uint8_t* Output)
+{
+    //* Dot Constant (Little Endian)
+    //* Dot (X,Y) = X*Y*Dot;
+    const uint8_t Dot[16] = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x92};
+
+    for (size_t i = 0; i < (Size>>4); i++)
+    {
+        for (int j = 0; j < 16; j++)
+            Output[j] ^= Block[i*16+j];
+        SBlockMul(Output, H, Output);
+        SBlockMul(Output, Dot, Output);
+    }
+    
+    //* If final Block is incomplete, pad with 0's first
+    if (Size % 16 != 0)
+    {
+        for (size_t j = 0; j < Size%16; j++)
+            Output[j] ^= Block[Size-(Size%16)+j];
+        for (int j = Size%16; j < 16; j++)
+                    Output[j] ^= 0;
+        //* Dot (X, Y) = (X * Y * Dot)
+        SBlockMul(Output, H, Output);
+        SBlockMul(Output, Dot, Output);
+    }
+    
+}
+
+static void SBlockMul(const uint8_t* X, const uint8_t* Y, uint8_t* Result)
+{
+    //* X and Y are Little-Endian
+    //* They are currently read from bit order high to low (left to right) 89ABCDEF 01234567
+    //* Change that to be from bit order low to high (right to left)       FEDCBA98 76543210
+    uint8_t XCpy[16];
+    uint8_t YCpy[16];
+    for (int i = 0 ; i < 16; i++)
+    {
+        XCpy[i] = X[i];
+        YCpy[i] = Y[i];
+        Result[i] = 0;
+    }
+
+    for (int i = 0; i < 128; i++)
+    {
+        //* BitArr is depedent, double check math on BitArr. Currently pulls Little-Endian, left to right (76543210)
+        if (SivBitArr(YCpy, i) == 1)
+            for (int i = 0 ; i < 16; i++)
+                Result[i] ^= XCpy[i];
+
+        //* BitArr is dependent, Shift is depedent
+        if (SivBitArr(XCpy, 127) == 0)
+        {            
+            // Bigger bits -> Smaller bits
+            // x[14] -> x[15]
+            // x[15] = (x[14] & 1) ++ (X[15] >> 1) = aaaaaaa(a) ++ (bbbbbbb)b = abbbbbbb
+
+            // FEDCBA98 76543210 -> EDCBA98_ 6543210F
+            // Bigger bits -> Smaller bits
+            // x[14] -> x[15]
+            // x[15] = (x[15] << 1) ++ (x[14] & 0x80) = (bbbbbbb)b + (a)aaaaaaa = bbbbbbba 
+            for (int i = 15; i > 0; i--)
+                XCpy[i] = ((XCpy[i]) << 1) | (XCpy[i-1] >> 7);
+            XCpy[0] = (XCpy[0] << 1);
+        }
+        else
+        {
+            for (int i = 15; i > 0; i--)
+                XCpy[i] = ((XCpy[i]) << 1) | (XCpy[i-1] >> 7);
+            XCpy[0] = (XCpy[0] << 1);
+            
+            //* V ^= R
+            //! Endian-ness accounted for, and bit order.
+            XCpy[15] ^= 0b11000010;
+            XCpy[0]  ^= 0b00000001;
+        }
+    }
+    return;
+}
+
+static void SivCTR(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* IV)
+{
+    //* Setup CtrBlock and StreamBlock
+    uint8_t CtrBlock[16] = {IV[0], IV[1], IV[2], IV[3], IV[4], IV[5], IV[6], IV[7], IV[8], IV[9], IV[10], IV[11], IV[12], IV[13], IV[14], IV[15]};
+    uint8_t StreamBlock[16];
+
+    for (int i = 0; i < Size/16; i++)
+    {
+        //* Gen StreamBlock
+        for (int j = 0; j < 16; j++)
+            StreamBlock[j] = CtrBlock[j];
+        AES_STD_Enc(StreamBlock, Key);
+
+        //* Increment CtrBlock (First 4 bytes as uint32_t LE)
+        ((uint32_t*) CtrBlock)[0]++;
+
+        //* Encrypt Plaintext
+        for (int j = 0; j < 16; j++)
+            Plaintext[i*16+j] ^= StreamBlock[j];
+    }
+    //* Gen StreamBlock
+    for (int j = 0; j < 16; j++)
+        StreamBlock[j] = CtrBlock[j];
+    AES_STD_Enc(StreamBlock, Key);
+
+    //* Encrypt Plaintext (Incomplete block)
+    for (size_t j = 0; j < Size%16; j++)
+        Plaintext[Size-(Size%16)+j] ^= StreamBlock[j];
 
     return;
 }
