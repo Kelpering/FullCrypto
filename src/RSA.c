@@ -11,3 +11,12 @@
 // Return Plaintext
 // Plaintext type == Ciphertext type
 // Overwrite Ciphertext into Plaintext
+
+// byte arr (Data) -> mpz_t (encoded)
+
+// mpz_t (encoded) -> byte arr (Data)
+
+// GenerateKeyPair
+// mpz_t encoded
+// N, E (Public Modulus, Public Exponent)
+// D (Private Exponent)
