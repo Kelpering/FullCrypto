@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <gmp.h>
+#include "../include/ByteArr.h"
 
 typedef struct
 {

@@ -25,50 +25,55 @@
 // D (Private Exponent)
 // This should all be contained within PrivateKey (contains PublicKey Struct)
 
-void GenerateKeyPair(uint64_t Seed, RSAKey Public, RSAKey Private)
+void GenerateKeyPair(const uint64_t Seed, RSAKey Public, RSAKey Private)
 {
     // 4096-bit
-    // Generate all required values for a keypair, save them to newly allocated struct PrivateKey (Contains PublicKey)
+    // Generate all required values for a keypair, save them to the keys
 }
 
-void RSA_Encrypt(mpz_t Plaintext, RSAKey Public)
+void RSA_Encrypt(mpz_t Plaintext, const RSAKey Public)
 {
     mpz_powm_ui(Plaintext, Plaintext, Public.Exp, Public.Mod);
-    //Is that it? If so, make this an inline to make this easier.
 }
 
-void RSA_Decrypt(mpz_t Ciphertext, RSAKey Private)
+void RSA_Decrypt(mpz_t Ciphertext, const RSAKey Private)
 {
     mpz_powm_ui(Ciphertext, Ciphertext, Private.Exp, Private.Mod);
-    //Is that it? If so, make this an inline to make this easier.
 }
 
-
-
-//! Signs here, do not need to be physically appended. Just send them along with eachother
-//! Fix this in comments. Signs are to be allocated and produced (They are fixed size, but encrypted with rsa)
-
-void RSA_Sign(mpz_t Ciphertext, RSAKey Private)
+void RSA_Sign(const mpz_t Text, mpz_t Sign, const RSAKey Private)
 {
-    // Ciphertext = Ciphertext ++ RSAEncrypt(Hash(Ciphertext), Private)
+    // Sign = RSAEncrypt(Hash(Text), Private)
     // This means the hash can be decrypted via the public key
     // The hash prevents modification without detection
+    // Directly change mpz_t Sign
 }
 
-bool RSA_Verify(mpz_t Ciphertext, RSAKey Public)
+bool RSA_Verify(const mpz_t Text, const mpz_t Sign, const RSAKey Public)
 {
-    // Ciphertext = Ciphertext ++ Hash encrypted
-    // Decouple Ciphertext and fixed size hash
-    // Decrypt hash with Public exponent
-    // Hash Ciphertext
-    // Compare decrypted hash with self calculated hash
-    // Return True/False
+    // Sign = RSADecrypt(Sign, Public)  (Proves private encrypted it)
+    // NewSign = Hash(Text)       (Hash Text)
+    // Return (Sign == NewSign)         If Ciphertext is altered, hash wont match. If Sign is altered, RSA decrypt wont match
 }
 
-// type EncodeArray(uint8_t* Array, size_t Size);
-// Return (decide later) mpz_t initialized to Array
-// Depending on how the number has to be encoded/decoded, this might just be the equivalent GMP function
+// Function: void mpz_import (mpz_t rop, size_t count, int order, size_t size, int endian, size_t nails, const void *op)
+// Set rop from an array of word data at op.
 
-// type DecodeArray(mpz_t Number)
+// The parameters specify the format of the data. count many words are read, each size bytes. order can be 1 for most significant word first or -1 
+// for least significant first. Within each word endian can be 1 for most significant byte first, -1 for least significant first, or 0 for the native 
+// endianness of the host CPU. The most significant nails bits of each word are skipped, this can be 0 to use the full words.
+
+
+
+mpz_t EncodeArray(uint8_t* Array, size_t Size)
+{
+
+}
+
+ByteArr DecodeArray(mpz_t Num)
+{
+    // type DecodeArray(mpz_t Number)
 // Return (decide later) Byte array that contains the mpz_t number decoded
 // Depending on how the number has to be encoded/decoded, this might just be the equivalent GMP function
+}
+
