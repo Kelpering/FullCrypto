@@ -1,4 +1,5 @@
 #include "../include/RSA.h"
+#include "../include/MD5.h"
 
 // To all: Assume that all inputs are valid
 // Only check if internal error would be caused.
@@ -25,6 +26,9 @@
 // D (Private Exponent)
 // This should all be contained within PrivateKey (contains PublicKey Struct)
 
+//* RSA encrypt & decrypt will use OAEP (Optimal Asymmetric Encryption Padding) on the message
+//* RSA Sign will use MD5 hashing (for now)
+
 void GenerateKeyPair(const uint64_t Seed, RSAKey Public, RSAKey Private)
 {
     // 4096-bit
@@ -41,12 +45,16 @@ void RSA_Decrypt(mpz_t Ciphertext, const RSAKey Private)
     mpz_powm_ui(Ciphertext, Ciphertext, Private.Exp, Private.Mod);
 }
 
-void RSA_Sign(const mpz_t Text, mpz_t Sign, const RSAKey Private)
+void RSA_Sign(const mpz_t Message, mpz_t Sign, const RSAKey Private)
 {
     // Sign = RSAEncrypt(Hash(Text), Private)
     // This means the hash can be decrypted via the public key
     // The hash prevents modification without detection
     // Directly change mpz_t Sign
+    //* Convert mpz_t Message into Array via Decode (temporarily) 
+    ByteArr TempDecode = DecodeArray(Message);
+    uint8_t Hash[16] = {0};
+
 }
 
 bool RSA_Verify(const mpz_t Text, const mpz_t Sign, const RSAKey Public)
