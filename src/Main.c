@@ -14,30 +14,31 @@ void StrToHex(char *Str);
 int main()
 {   
     //^ TODO
-    //* Test AES_GCM_SIV against RFC 8452
+    //^ Refactor code to look nice
     //^ Add error detection / reporting (Malloc, failure to encrypt/decrypt, etc).
     //^ Standardize function I/O
     //^ Fix all Endian aligned data manip to be compatible cross platform.
     //^ Document / Re-document code
-    //^ Refactor code to look nice
 
     //^ Reprogram a majority of AES to be more standard and meet current code expectations.
-    //! Multithread support?
 
-    uint8_t Plaintext[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x4d, 0xb9, 0x23, 0xdc, 0x79, 0x3e, 0xe6, 0x49, 0x7c, 0x76, 0xdc, 0xc0, 0x3a, 0x98, 0xe1, 0x08};
-    uint8_t AAD[] = {0x9c, 0x21, 0x59, 0x05, 0x8b, 0x1f, 0x0f, 0xe9, 0x14, 0x33, 0xa5, 0xbd, 0xc2, 0x0e, 0x21, 0x4e, 0xab, 0x7f, 0xec, 0xef, 0x44, 0x54, 0xa1, 0x0e, 0xf0, 0x65, 0x7d, 0xf2, 0x1a, 0xc7};
-    uint8_t Key[32] = {0};
-    uint8_t IV[12] = {0};
-    
-    uint8_t* Tag = AES_GCM_SIV_Enc(Plaintext, sizeof(Plaintext), AAD, sizeof(AAD), Key, IV);
-    PrintInfo(Plaintext, sizeof(Plaintext), false);
-    PrintInfo(Tag, 16, false);
+    //* Standardize function returns and inputs
+        //* ErrorCode c_snake_case(non, struct, vars, unless prev set [RSAKey])
+    //* For variable size arrays, use &ByteArr (malloc Arr and Size) in params (last)
+    //* For fixed size arrays, use Arr[Size] and expect user to pre-allocate (no OoB check)
+    //* Error codes: typedef enum, 1 for success, 0 for false (bool), extras in future.
 
-    bool valid = AES_GCM_SIV_Dec(Plaintext, sizeof(Plaintext), AAD, sizeof(AAD), Tag, Key, IV);
-    PrintInfo(Plaintext, sizeof(Plaintext), false);
-    printf("IsValid: %s\n", (valid)? "Yes" : "No");
+    //* Expect user to be knowledgable and use correctly.
+    //* Functions with additional expectations (E.g. RSA Mod < Key length)
+        //* are ignored and assumed to be followed (Crypto breaks are ignored, code breaks are addressed)
+    //* In future (RFC in func name) will address these concerns and implement further error codes to report issues.
 
-    free(Tag);
+    //* Each .c file will share a .h file for implementation. If Private .h is required, name = NAME_private.h
+    //* Highlight usage (hover over function) will be implemented in header. All functions will require descriptions of variables along with appropriate names
+    //* Every .h public file will have an associated .md README file for extensive usage descriptions (examples, usage, safe/unsafe, etc). (AES.md should be a good example for now)
+    //* Extra README (Licenses.md) will include all licensed libraries used, along with files and locations. include licenses in README.md at the bottom, no locations, just libs.
+
+
     return 0;
 }
 
