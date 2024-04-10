@@ -1,4 +1,6 @@
-#pragma once
+#ifndef AES_H
+#define AES_H
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -111,3 +113,5 @@ uint8_t* AES_KeyGen256(uint32_t Seed);
 /// @returns An allocated 16-byte array. Must be de-allocated to prevent memory leaks.
 /// @warning This function is insecure, and should only be used for convenient testing.
 uint8_t* AES_IVGen(uint32_t Seed, size_t Size);
+
+#endif // AES_H

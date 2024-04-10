@@ -1,7 +1,5 @@
 #include "../include/AES.h"
 #include "../include/AESPrivate.h"
-#include <stdio.h>
-
 
 //* Public functions
 //? AES standard implementation

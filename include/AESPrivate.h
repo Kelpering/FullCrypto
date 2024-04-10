@@ -1,4 +1,6 @@
-#pragma once
+#ifndef AES_PRIVATE_H
+#define AES_PRIVATE_H
+
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -151,3 +153,5 @@ void InitSBox();
 
 /// @brief Initializes the internal "InvSBox" of AESDec to allow for proper decryption.
 void InitInvSBox();
+
+#endif // AES_PRIVATE_H
