@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdlib.h>
-#include "../include/ByteArr.h"
+#include "../include/bytearr.h"
 #include "../include/error.h"
 
 

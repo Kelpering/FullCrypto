@@ -4,20 +4,23 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include "../include/ByteArr.h"
+#include "../include/bytearr.h"
+#include "../include/error.h"
 
 
 //* AES Standards
 
-/// @brief Encrypts Plaintext with Key to the AES-256 standard (FIPS-197 compliant).
+/// @brief Encrypts Plaintext with Key to the AES-256 standard.
 /// @param Plaintext 16 bytes of Plaintext to encrypt, directly altered into Ciphertext.
 /// @param Key 32 bytes of a key, used to encrypt Plaintext.
-void AES_STD_Enc(uint8_t* Plaintext, const uint8_t* Key);
+/// @returns ErrorCode (success, malloc_error)
+ErrorCode aes_std_enc(uint8_t* Plaintext, const uint8_t* Key);
 
-/// @brief Decrypts Ciphertext with Key to the AES-256 standard (FIPS-197 compliant).
+/// @brief Decrypts Ciphertext with Key to the AES-256 standard.
 /// @param Ciphertext 16 bytes of Ciphertext to decrypt, directly altered into Plaintext.
 /// @param Key 32 bytes of a key, used to decrypt Ciphertext.
-void AES_STD_Dec(uint8_t* Ciphertext, const uint8_t* Key);
+/// @returns ErrorCode (success, malloc_error)
+ErrorCode aes_std_dec(uint8_t* Ciphertext, const uint8_t* Key);
 
 
 //* AES Implementations
@@ -106,12 +109,12 @@ bool AES_GCM_SIV_Dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size
 /// @param Seed A 32-bit seed value for the rand generator. Recommended to use time(NULL) for the seed.
 /// @returns an allocated, 32-byte array for use in AES functions. Must be de-allocated to prevent memory leaks.
 /// @warning This function is insecure and should only be used for convenient testing.
-uint8_t* AES_KeyGen256(uint32_t Seed);
+uint8_t* aes_generate_key(uint32_t Seed);
 
 /// @brief Generates a random 16-byte IV for use with CBC.
 /// @param Seed A random number to initialize srand(). Recommended to use time(NULL).
 /// @returns An allocated 16-byte array. Must be de-allocated to prevent memory leaks.
 /// @warning This function is insecure, and should only be used for convenient testing.
-uint8_t* AES_IVGen(uint32_t Seed, size_t Size);
+uint8_t* aes_generate_iv(uint32_t Seed, size_t Size);
 
 #endif // AES_H
