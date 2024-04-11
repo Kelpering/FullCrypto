@@ -1,4 +1,4 @@
-#include "../include/MD5.h"
+#include "../include/hash.h"
 
 //* Byte = most significant bit first
 //* Word = 32-bit collection of 4 bytes, 
@@ -30,40 +30,41 @@ const uint32_t T[64] =
     0XF7537E82, 0XBD3AF235, 0X2AD7D2BB, 0XEB86D391
 };
 
-void HashMD5(void* Data, size_t Length, char StringHash[33])
+//! Needs error detection, Needs entire revise tbh
+ErrorCode hash_md5(void* Data, size_t Size, uint8_t* RetArr)
 {
     //? Calculate and assign variables.
 
-    uint8_t Pad = (120 - (Length % 64)) % 64;
-    uint8_t* NewData  = (uint8_t *) calloc((Length + Pad + 8), sizeof(uint8_t));
+    uint8_t Pad = (120 - (Size % 64)) % 64;
+    uint8_t* NewData  = (uint8_t *) calloc((Size + Pad + 8), sizeof(uint8_t));
     uint32_t* NewWord = (uint32_t*) NewData;
 
     //? Create a copy of the data to modify.
 {
     size_t i;
-    for (i = 0; i < Length; i++)
+    for (i = 0; i < Size; i++)
     {
         NewData[i] = ((uint8_t *) Data)[i];
     }
     NewData[i] = 0x80;
     i++;
 }
-    //? Append Length (before padding)
+    //? Append Size (before padding)
 
     // Append the size of the original Data (in bits) as two 32-bit words (low order first).
-    NewWord[(Length+Pad+0) >> 2] = (uint32_t) ((Length * 8) & 0xFFFFFFFF);
-    NewWord[(Length+Pad+4) >> 2] = (uint32_t) ((Length * 8) >> 32);
+    NewWord[(Size+Pad+0) >> 2] = (uint32_t) ((Size * 8) & 0xFFFFFFFF);
+    NewWord[(Size+Pad+4) >> 2] = (uint32_t) ((Size * 8) >> 32);
 
     //? Calculate the Hash
 
-    //! If I change ABCD to State[4], there might be code length optimization to be had.☻
+    //! If I change ABCD to State[4], there might be code Size optimization to be had.☻
     // Beginning values for (A, B, C, D)
     uint32_t A = 0x67452301;
     uint32_t B = 0xefcdab89;
     uint32_t C = 0x98badcfe;
     uint32_t D = 0x10325476;
 
-   for (size_t i = 0; i < (Length+Pad+8)/64; i++)
+   for (size_t i = 0; i < (Size+Pad+8)/64; i++)
    {
         uint32_t X[16];
         for (int j = 0; j < 16; j++)
@@ -153,40 +154,16 @@ void HashMD5(void* Data, size_t Length, char StringHash[33])
         D = D + DD;
    }
 
-    //? Modify the StringHash string to the returned hash.
-
     //* TempHash will be 16 bytes (4 words). Set as (ABCD) with A being the lowest order byte
     uint8_t TempHash[16];
     // Treat TempHash as if it is an array of 4 words, instead of 16 bytes.
-    ((uint32_t*) TempHash)[0] = A;
-    ((uint32_t*) TempHash)[1] = B;
-    ((uint32_t*) TempHash)[2] = C;
-    ((uint32_t*) TempHash)[3] = D;
+    //! A majority of this program is probably little-endian dependant (especially here)
+    ((uint32_t*) RetArr)[0] = A;
+    ((uint32_t*) RetArr)[1] = B;
+    ((uint32_t*) RetArr)[2] = C;
+    ((uint32_t*) RetArr)[3] = D;
 
-    //? The data becomes a hexadecimal string to be read.
-    for (size_t i = 0; i < 16; i++)
-    {
-        // * If number is larger than 9: Account for overflow and move to hex a-f.
-        // * Else: Convert to character normally.
-
-        // (TempHash[i] >> 4) is the first 4-Bit nibble.
-        if ((TempHash[i] >> 4) > 9)
-            StringHash[i << 1] = 'a' + ((TempHash[i] >> 4) - 10);
-        else
-            StringHash[i << 1] = '0' + (TempHash[i] >> 4);
-
-        // (TempHash[i] & 0b1111) is the second 4-Bit nibble.
-        if ((TempHash[i] & 15) > 9)
-            StringHash[(i << 1) + 1] = 'a' + ((TempHash[i] & 15) - 10);
-        else
-            StringHash[(i << 1) + 1] = '0' + (TempHash[i] & 15);
-
-    }
-    StringHash[32] = '\0';  // Set last index as null terminator to form a valid string.
-
-    // Free the Malloc and clear its pointers.
+    // Free the Malloc
     free(NewData);
-    NewData = NULL;
-    NewWord = NULL;
-    return;
+    return 0;
 }

@@ -1,10 +1,10 @@
-#include "../include/Base64.h"
+#include "../include/base64.h"
 
 char Base64Arr[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 uint8_t Base64Inv[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 62, 0, 0, 0, 63, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 0, 0, 0, 0, 0, 0, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 0, 0, 0, 0, 0};
 uint8_t InvalidBytes[] = {0x2C, 0x2D, 0x2E, 0x3A, 0x3B, 0x3C, 0x3E, 0x3F, 0x40, 0x5B, 0x5C, 0x5D, 0x5E, 0x5F, 0x60};
 
-bool ValidateB64(const char* B64String)
+bool base64_validate(const char* B64String)
 {
     //? Find string size (excluding '\0').
     size_t StrSize;
@@ -39,40 +39,48 @@ bool ValidateB64(const char* B64String)
     return true;
 }
 
-ByteArr B64toByte(const char* B64String)
+ErrorCode base64_convert_byte(const char* B64String, ByteArr *Ret)
 {
-    //? If not valid, return NULL pointer and a size of 0.
-    if (ValidateB64(B64String) == false)
-        return (ByteArr) {NULL, 0};
+    //? If not valid, return ErrorCode unknown
+    if (base64_validate(B64String) == false)
+        return unknown_error;
 
     size_t CharSize;
-    ByteArr B64Arr;
 
     //? Find string size (excluding '\0').
     for (CharSize = 0; B64String[CharSize] != '\0'; CharSize++);
     
     //? Calculate size of ByteArr, then malloc
-    B64Arr.Size = (CharSize / 4)*3;
-    B64Arr.Arr = malloc(B64Arr.Size);
+    Ret->Size = (CharSize / 4)*3;
+    Ret->Arr = malloc(Ret->Size);
+    if (Ret->Arr == NULL)
+    {
+        free(Ret->Arr);
+        return malloc_error;
+    }
 
     for (size_t i = 0, j = 0; i < CharSize; i+=4)
     {
-        B64Arr.Arr[j++] = (Base64Inv[B64String[i]] << 2) | (Base64Inv[B64String[i+1]] >> 4);                     //? First 6, Next 2
-        B64Arr.Arr[j++] = ((Base64Inv[B64String[i+1]] << 4) & 0b11110000) | ((Base64Inv[B64String[i+2]] >> 2));  //? Next 4,  Third 4
-        B64Arr.Arr[j++] = ((Base64Inv[B64String[i+2]] << 6) & 0b11000000) | Base64Inv[B64String[i+3]];           //? Third 2, Fourth 6
+        Ret->Arr[j++] = (Base64Inv[B64String[i]] << 2) | (Base64Inv[B64String[i+1]] >> 4);                     //? First 6, Next 2
+        Ret->Arr[j++] = ((Base64Inv[B64String[i+1]] << 4) & 0b11110000) | ((Base64Inv[B64String[i+2]] >> 2));  //? Next 4,  Third 4
+        Ret->Arr[j++] = ((Base64Inv[B64String[i+2]] << 6) & 0b11000000) | Base64Inv[B64String[i+3]];           //? Third 2, Fourth 6
     }
     
     //? Removes padding, if necessary.
     if (B64String[CharSize-2] == '=')
-        B64Arr.Size -= 2;
+        Ret->Size -= 2;
     else if (B64String[CharSize-1] == '=')
-        B64Arr.Size -= 1;
+        Ret->Size -= 1;
     
     //? Reallocates the array to account for padding.
-    B64Arr.Arr = realloc(B64Arr.Arr, B64Arr.Size);
+    Ret->Arr = realloc(Ret->Arr, Ret->Size);
+    if (Ret->Arr == NULL)
+    {
+        free(Ret->Arr);
+        return malloc_error;
+    }
 
-    //! ByteArr itself should not need to be freed, but ByteArr.Arr must be freed by the user.
-    return B64Arr;
+    return success;
 }
 
 char* BytetoB64(const uint8_t* Array, size_t Size)

@@ -6,7 +6,8 @@
 #include <stdint.h>
 #include "../include/AES.h"
 #include "../include/Base64.h"
-#include "../include/MD5.h"
+#include "../include/hash.h"
+#include "../include/error.h"
 
 void PrintInfo(uint8_t* Array, size_t Size, bool isString);
 void StrToHex(char *Str);
@@ -55,7 +56,8 @@ int main()
 
     //^ Misc
     //* Remove pragma once and replace with standard include guard
-    //* Main will be 
+    //* Typedefs are PascalCase
+    //* Variables are all PascalCase (they look neat)
 
     return 0;
 }
