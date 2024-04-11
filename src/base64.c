@@ -54,10 +54,7 @@ ErrorCode base64_convert_byte(const char* B64String, ByteArr *Ret)
     Ret->Size = (CharSize / 4)*3;
     Ret->Arr = malloc(Ret->Size);
     if (Ret->Arr == NULL)
-    {
-        free(Ret->Arr);
         return malloc_error;
-    }
 
     for (size_t i = 0, j = 0; i < CharSize; i+=4)
     {
@@ -73,8 +70,8 @@ ErrorCode base64_convert_byte(const char* B64String, ByteArr *Ret)
         Ret->Size -= 1;
     
     //? Reallocates the array to account for padding.
-    Ret->Arr = realloc(Ret->Arr, Ret->Size);
-    if (Ret->Arr == NULL)
+    uint8_t* Temp = realloc(Ret->Arr, Ret->Size);
+    if (Temp == NULL)
     {
         free(Ret->Arr);
         return malloc_error;
@@ -83,7 +80,7 @@ ErrorCode base64_convert_byte(const char* B64String, ByteArr *Ret)
     return success;
 }
 
-char* BytetoB64(const uint8_t* Array, size_t Size)
+ErrorCode base64_convert_string(const uint8_t* Array, size_t Size, char** RetStr)
 {
     //? Size of string generated in Malloc
     size_t StringSize = 4*((Size + 2 - ((Size - 1) % 3))/3) + 1;
@@ -91,6 +88,8 @@ char* BytetoB64(const uint8_t* Array, size_t Size)
 
     //? The malloc string here is 4 characters per 3 bytes w/ pad, plus 1 '\0'.
     char* B64String = malloc(StringSize);
+    if (B64String == NULL)
+        return malloc_error;
 
     //? This runs all but padding Base64 steps
     for (size_t i = 0, j = 0; i < Size - (Size % 3); i+=3)
@@ -118,6 +117,8 @@ char* BytetoB64(const uint8_t* Array, size_t Size)
     //? Make B64String a valid string.
     B64String[StringSize - 1] = '\0';
 
-    //! Warning, returns allocated string. Must be de-allocated after use.
-    return B64String;
+    //* Set the outside string pointer to B64String pointer.
+    RetStr = B64String;
+
+    return success;
 }
