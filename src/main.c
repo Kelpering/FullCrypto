@@ -59,6 +59,16 @@ int main()
     //* Typedefs are PascalCase
     //* Variables are all PascalCase (they look neat)
 
+    uint8_t Temp[16] = {15, 22, 96, 220, 32, 250, 200, 97, 82, 53, 100, 152, 132, 198, 10, 5};
+    uint8_t* TempKey = aes_generate_key(69);
+    ByteArr* RetArr;    // Must free RetArr.
+
+    aes_ecb_enc(Temp, sizeof(Temp), TempKey, RetArr);
+    aes_ecb_dec(RetArr->Arr, RetArr->Size, TempKey, RetArr);
+    PrintInfo(RetArr->Arr, RetArr->Size, false);
+
+    free(RetArr->Arr);
+
     return 0;
 }
 
@@ -72,7 +82,7 @@ void PrintInfo(uint8_t* Array, size_t Size, bool isString)
     {
         printf("\nData is not string.\nSize: %lu\n", Size);
         for (size_t i = 0; i < Size; i++)
-            printf("%.2x", Array[i]);
+            printf("%d ", Array[i]);
     }
     printf("\n");
     return;

@@ -128,65 +128,76 @@ ErrorCode aes_std_dec(uint8_t* Ciphertext, const uint8_t* Key)
     Ciphertext[14] = State[11];
     Ciphertext[15] = State[15];
 
-    return;
+    return success;
 }
 
 
 //? AES-ECB implementation
 
-ByteArr AES_ECB_Enc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key)
+ErrorCode aes_ecb_enc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key, ByteArr* Ret)
 {
     if (Size == 0)
-        return (ByteArr){NULL, 0};
+        return unknown_error;
 
     //? Declare variables & ByteArr struct
-    ByteArr NewArr;
     uint8_t PadByte = 16 - (Size%16);
-    NewArr.Size = Size + PadByte;
-    NewArr.Arr = malloc(NewArr.Size);
+    Ret->Size = Size + PadByte;
+    Ret->Arr = malloc(Ret->Size);
+    if (Ret->Arr == NULL)
+        return malloc_error;
 
     //? Copy over Plaintext to NewArr, then Pad to a multiple of 16
     for (size_t i = 0; i < Size; i++)
-        NewArr.Arr[i] = Plaintext[i];
-    for (size_t i = Size; i < NewArr.Size; i++)
-        NewArr.Arr[i] = PadByte;
+        Ret->Arr[i] = Plaintext[i];
+    for (size_t i = Size; i < Ret->Size; i++)
+        Ret->Arr[i] = PadByte;
 
     //? Encrypt each 16 byte block.
-    for (size_t i = 0; i < NewArr.Size; i+=16)
-        aes_std_enc(NewArr.Arr + i, Key);
+    for (size_t i = 0; i < Ret->Size; i+=16)
+    {
+        ErrorCode TempError = aes_std_enc(Ret->Arr + i, Key);
+        if (TempError != success)
+            return TempError;
+    }
 
-    //! Needs to be de-allocated
-    return NewArr;
+    return success;
 }
 
-ByteArr AES_ECB_Dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key)
+ErrorCode aes_ecb_dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key, ByteArr* Ret)
 {
     if (Size == 0 || Size%16 != 0)
-        return (ByteArr){NULL, 0};
+        return unknown_error;
 
     //? Copy over Ciphertext
     uint8_t* Temp = malloc(Size);
+    if (Temp == NULL)
+        return malloc_error;
     for (size_t i = 0; i < Size; i++)
         Temp[i] = Ciphertext[i];
 
     //? Decrypt Temp, 16 bytes at a time
     for (size_t i = 0; i < Size; i+=16)
-        aes_std_dec(Temp + i, Key);
+    {
+        ErrorCode TempError = aes_std_dec(Temp + i, Key);
+        if (TempError != success)
+            return TempError;
+    }
 
     //? Declare ByteArr Struct
-    ByteArr NewArr;
-    NewArr.Size = Size - Temp[Size-1];
-    NewArr.Arr = malloc(NewArr.Size);
+    Ret->Size = Size - Temp[Size-1];
+    Ret->Arr = malloc(Ret->Size);
+    if (Ret->Arr == NULL)
+        return malloc_error;
 
     //? Copy over Temp to ByteArr
     for (size_t i = 0; i < Size-Temp[Size-1]; i++)
-        NewArr.Arr[i] = Temp[i];
+        Ret->Arr[i] = Temp[i];
 
     //? Free allocated Temp
     free (Temp);
 
     //! Needs to be de-allocated
-    return NewArr;
+    return success;
 }
 
 
@@ -363,7 +374,7 @@ uint8_t* AES_GCM_SIV_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, s
     //* Run polyval for AAD, Plaintext, LenBlock in sequence.
     polyval(AuthKey, AAD, ASize, Tag);
     polyval(AuthKey, Plaintext, PSize, Tag);
-    polyval(AuthKey, LenBlock, 16, Tag);
+    polyval(AuthKey, ((uint8_t*) LenBlock), 16, Tag);
 
     //* Xor first 12 bytes of Tag with IV
     for (int i = 0; i < 12; i++)
@@ -412,7 +423,7 @@ bool AES_GCM_SIV_Dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size
     //* Run polyval for AAD, Plaintext, LenBlock in sequence.
     polyval(AuthKey, AAD, ASize, PolyHash);
     polyval(AuthKey, Plaintext, CSize, PolyHash);
-    polyval(AuthKey, LenBlock, 16, PolyHash);
+    polyval(AuthKey, ((uint8_t*) LenBlock), 16, PolyHash);
 
     //* Xor first 12 bytes of Tag with IV
     for (int i = 0; i < 12; i++)

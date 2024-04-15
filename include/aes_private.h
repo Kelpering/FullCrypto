@@ -146,7 +146,7 @@ static uint8_t sbox_func(uint8_t Byte);
 
 /// @brief Applies InvSBox[] to a Byte, but via calculations instead of an array.
 /// @returns InvSBox[Byte].
-static uint8_t Inv_sbox_func(uint8_t Byte);
+static uint8_t inv_sbox_func(uint8_t Byte);
 
 /// @brief Initializes the internal "SBox" of AESEnc to allow for proper encryption.
 void init_sbox();

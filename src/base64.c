@@ -118,7 +118,7 @@ ErrorCode base64_convert_string(const uint8_t* Array, size_t Size, char** RetStr
     B64String[StringSize - 1] = '\0';
 
     //* Set the outside string pointer to B64String pointer.
-    RetStr = B64String;
+    *RetStr = B64String;
 
     return success;
 }
