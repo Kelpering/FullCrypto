@@ -30,15 +30,15 @@ ErrorCode aes_std_dec(uint8_t* Ciphertext, const uint8_t* Key);
 /// @param Size The size of said uint8_t array.
 /// @param Key 32-byte key to encrypt the Plaintext
 /// @param Ret A ByteArr struct with the return info within it. User must de-allocate Ret->Arr to prevent memory leak.
-/// @returns ErrorCode (success, malloc_error)
+/// @returns ErrorCode (success, unknown_error, malloc_error)
 ErrorCode aes_ecb_enc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key, ByteArr* Ret);
 
 /// @brief An ECB decryption implementation of AES-256.
 /// @param Ciphertext Ciphertext of any size that is a multiple of 16, represented as a uint8_t array.
 /// @param Size The size of said uint8_t array, must be a multiple of 16, else it is invalid.
 /// @param Key 32-byte key to decrypt the Ciphertext
-/// @returns A ByteArr struct containing an allocated uint8_t array to the plaintext, and the size of said array. The array pointer must be de-allocated to prevent memory leaks.
-/// @note Will return NULL pointer and a size of 0 if invalid.
+/// @param Ret A ByteArr struct with the return info within it. User must de-allocate Ret->Arr to prevent memory leak.
+/// @returns ErrorCode (success, unknown_error, malloc_error)
 ErrorCode aes_ecb_dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key, ByteArr* Ret);
 
 /// @brief A CBC encryption implementation of AES-256.
@@ -48,7 +48,7 @@ ErrorCode aes_ecb_dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key
 /// @param IV A 16-byte, randomly chosen, Initialization vector. Does not have to be hidden.
 /// @returns A ByteArr struct containing an allocated uint8_t array to the ciphertext, and the size of said array. The array pointer must be de-allocated to prevent memory leaks.
 /// @note Will return NULL pointer and a size of 0 if invalid.
-ByteArr AES_CBC_Enc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* IV);
+ErrorCode aes_cbc_enc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* IV, ByteArr* Ret);
 
 /// @brief A CBC decryption implementation of AES-256.
 /// @param Ciphertext Ciphertext of any size that is a multiple of 16, represented as a uint8_t array.
@@ -57,7 +57,7 @@ ByteArr AES_CBC_Enc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key, c
 /// @param IV A 16-byte, randomly chosen, Initialization vector. Does not have to be hidden.
 /// @returns A ByteArr struct containing an allocated uint8_t array to the plaintext, and the size of said array. The array pointer must be de-allocated to prevent memory leaks.
 /// @note Will return NULL pointer and a size of 0 if invalid.
-ByteArr AES_CBC_Dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key, const uint8_t* IV);
+ErrorCode aes_cbc_dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key, const uint8_t* IV, ByteArr* Ret);
 
 /// @brief Encrypts Plaintext while also generating Tag to prove that neither AAD or Ciphertext were been altered (Authenticated Encryption).
 /// @param Plaintext Plaintext of any size, directly altered into Ciphertext.

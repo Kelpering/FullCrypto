@@ -196,57 +196,66 @@ ErrorCode aes_ecb_dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key
     //? Free allocated Temp
     free (Temp);
 
-    //! Needs to be de-allocated
     return success;
 }
 
 
 //? AES-CBC implementation
 
-ByteArr AES_CBC_Enc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* IV)
+ErrorCode aes_cbc_enc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* IV, ByteArr* Ret)
 {
     if (Size == 0)
-        return (ByteArr){NULL, 0};
+        return unknown_error;
 
-    ByteArr NewArr;
     uint8_t PadByte = 16 - (Size%16);
-    NewArr.Size = PadByte + Size;
-    NewArr.Arr = malloc(NewArr.Size);
+    Ret->Size = PadByte + Size;
+    Ret->Arr = malloc(Ret->Size);
+    if (Ret->Arr == NULL)
+        return malloc_error;
 
     //? Fill NewArr with relevant data and padding.
     for (size_t i = 0; i < Size; i++)
-        NewArr.Arr[i] = Plaintext[i];
-    for (size_t i = Size; i < NewArr.Size; i++)
-        NewArr.Arr[i] = PadByte;
+        Ret->Arr[i] = Plaintext[i];
+    for (size_t i = Size; i < Ret->Size; i++)
+        Ret->Arr[i] = PadByte;
 
     for (int i = 0; i < 16; i++)
-        NewArr.Arr[i] ^= IV[i];
-    for (size_t i = 0; i < NewArr.Size - 16; i+=16)
+        Ret->Arr[i] ^= IV[i];
+    for (size_t i = 0; i < Ret->Size - 16; i+=16)
     {
-        aes_std_enc(NewArr.Arr+i, Key);
+        ErrorCode TempError = aes_std_enc(NewArr.Arr+i, Key);
+        if (TempError != success)
+            return TempError;
         for (int j = 0; j < 16; j++)
-            NewArr.Arr[i+16 + j] ^= NewArr.Arr[i + j];
+            Ret->Arr[i+16 + j] ^= Ret->Arr[i + j];
     }
     // Final one without CBC function
-    aes_std_enc(NewArr.Arr+NewArr.Size-16, Key);
+    ErrorCode TempError = aes_std_enc(Ret->Arr+Ret->Size-16, Key);
+    if (TempError != success)
+        return TempError;
 
-    //! Needs to be de-allocated
-    return NewArr;
+    return success;
 }
 
-ByteArr AES_CBC_Dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key, const uint8_t* IV)
+ErrorCode aes_cbc_dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key, const uint8_t* IV, ByteArr* Ret)
 {
     if (Size == 0 || Size%16 != 0)
-        return (ByteArr){NULL, 0};
+        return unknown_error;
 
     //? Copy over Ciphertext
     uint8_t* Temp = malloc(Size);
+    if (Temp == NULL)
+        return malloc_error;
     for (size_t i = 0; i < Size; i++)
         Temp[i] = Ciphertext[i];
 
     //? Decrypt Temp, 16 bytes at a time
     for (size_t i = 0; i < Size; i+=16)
-        aes_std_dec(Temp + i, Key);
+    {
+        ErrorCode TempError = aes_std_dec(Temp + i, Key);
+        if (TempError != success)
+            return TempError;
+    }
 
     //? XOR each Ciphertext
     for (int i = 0; i < 16; i++)
@@ -255,19 +264,19 @@ ByteArr AES_CBC_Dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key, 
         Temp[i] ^= Ciphertext[i-16];
 
     //? Declare ByteArr Struct
-    ByteArr NewArr;
-    NewArr.Size = Size - Temp[Size - 1];
-    NewArr.Arr = malloc(NewArr.Size);
+    Ret->Size = Size - Temp[Size - 1];
+    Ret->Arr = malloc(Ret->Size);
+    if (Ret->Arr == NULL)
+        return malloc_error;
 
     //? Copy over Temp to ByteArr
     for (size_t i = 0; i < 32; i++)
-        NewArr.Arr[i] = Temp[i];
+        Ret->Arr[i] = Temp[i];
 
     //? Free allocated Temp
     free(Temp);
     
-    //! Needs to be de-allocated
-    return NewArr;
+    return success;
 }
 
 
