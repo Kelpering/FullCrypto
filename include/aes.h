@@ -68,7 +68,7 @@ ErrorCode aes_cbc_dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key
 /// @param IV 96-bit (12 byte) randomly generated value.
 /// @param Tag A pointer to a 128-bit (16 byte) tag that validates that Ciphertext and AAD have not been altered. Must be de-allocated by the user to prevent memory leaks.
 /// @returns ErrorCode (success, unknown_error, malloc_error)
-uint8_t* aes_gcm_enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV, uint8_t** Tag);
+ErrorCode aes_gcm_enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV, uint8_t** RetTag);
 
 /// @brief Decrypts Ciphertext while also validating Tag to prove that neither AAD or Ciphertext were altered (Authenticated Decryption).
 /// @param Ciphertext Ciphertext of any size, directly altered into Plaintext.
@@ -78,8 +78,8 @@ uint8_t* aes_gcm_enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_
 /// @param Key 256-bit (32 byte) key.
 /// @param IV 96-bit (12 byte) IV.
 /// @param Tag 128-bit (16 byte) tag that validates that Ciphertext and AAD have not been altered.
-/// @returns A boolean value on whether or not the decryption was valid. If invalid, Ciphertext was not altered.
-bool aes_gcm_dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV, const uint8_t* Tag);
+/// @returns ErrorCode (Success, unknown_error, malloc_error)
+ErrorCode aes_gcm_dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV, const uint8_t* Tag);
 
 /// @brief Encrypts Plaintext while also generating Tag to prove that neither the AAD or Ciphertext were altered (Authenticated Encryption).
 /// @param Plaintext Plaintext of any size, directly altered into Ciphertext.
@@ -88,9 +88,10 @@ bool aes_gcm_dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size_t A
 /// @param ASize Size of AAD in bytes.
 /// @param Key 256-bit (32 byte) key.
 /// @param IV 96-bit (12 byte) randomly generated value.
-/// @returns An allocated 128-bit tag (16 bytes). Used to prove Ciphertext has not been altered.
+/// @param Tag A pointer to a 128-bit (16 byte) tag that validates that Ciphertext and AAD have not been altered.
+/// @returns ErrorCode (Success, unknown_error, malloc_error)
 /// @note GCM-SIV has an advantage over plain GCM in the fact that it is resistant to reusing random values for IV.
-uint8_t* AES_GCM_SIV_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV);
+ErrorCode aes_siv_enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV, uint8_t** RetTag);
 
 /// @brief Decrypts Ciphertext while also validating Tag to prove that neither AAD or Ciphertext were altered (Authenticated Decryption).
 /// @param Ciphertext Ciphertext of any size, directly altered into Plaintext.
@@ -100,21 +101,22 @@ uint8_t* AES_GCM_SIV_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, s
 /// @param Tag 128-bit (16 byte) tag that validates that Ciphertext and AAD have not been altered.
 /// @param Key 256-bit (32 byte) key.
 /// @param IV 96-bit (12 byte) randomly generated value.
-/// @returns A boolean value on whether or not the decryption was valid. If invalid, Ciphertext was not altered.
+/// @returns ErrorCode (Success, unknown_error, malloc_error)
 /// @note GCM-SIV has an advantage over plain GCM in the fact that it is resistant to reusing random values for IV.
-bool AES_GCM_SIV_Dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size_t ASize, const uint8_t* Tag, const uint8_t* Key, const uint8_t* IV);
+ErrorCode aes_siv_dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV, const uint8_t* Tag);
 
 //* Non-standard generator functions
 
-/// @brief Generates a random 32-byte key for use in AES-256 functions.
-/// @param Seed A 32-bit seed value for the rand generator. Recommended to use time(NULL) for the seed.
-/// @returns an allocated, 32-byte array for use in AES functions. Must be de-allocated to prevent memory leaks.
-/// @warning This function is insecure and should only be used for convenient testing.
-uint8_t* aes_generate_key(uint32_t Seed);
+// /// @brief Generates a random 32-byte key for use in AES-256 functions.
+// /// @param Seed A 32-bit seed value for the rand generator. Recommended to use time(NULL) for the seed.
+// /// @returns an allocated, 32-byte array for use in AES functions. Must be de-allocated to prevent memory leaks.
+// /// @warning This function is insecure and should only be used for convenient testing.
+// uint8_t* aes_generate_key(uint32_t Seed);
 
 /// @brief Generates a random 16-byte IV for use with CBC.
 /// @param Seed A random number to initialize srand(). Recommended to use time(NULL).
 /// @returns An allocated 16-byte array. Must be de-allocated to prevent memory leaks.
+/// @note Standard AES key here is a Size of 32 bytes.
 /// @warning This function is insecure, and should only be used for convenient testing.
 uint8_t* aes_generate_iv(uint32_t Seed, size_t Size);
 

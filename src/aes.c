@@ -282,7 +282,7 @@ ErrorCode aes_cbc_dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key
 
 //? AES-GCM implementation
 
-uint8_t* aes_gcm_enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV, uint8_t** Tag);
+uint8_t* aes_gcm_enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV, uint8_t** RetTag);
 {
     //* Zero block (encrypted)
     uint8_t H[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
@@ -324,16 +324,19 @@ uint8_t* aes_gcm_enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_
     if (TempError != success)
         return TempError;
 
-    *Tag = Hash;
+    *RetTag = Hash;
 
     return success;
 }
 
-bool AES_GCM_Dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size_t ASize, const uint8_t* Tag, const uint8_t* Key, const uint8_t* IV)
+ErrorCode aes_gcm_dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV, const uint8_t* Tag)
 {
     //* Zero block (encrypted)
     uint8_t H[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-    aes_std_enc(H, Key);
+    ErrorCode TempError;
+    TempError = aes_std_enc(H, Key);
+    if (TempError != success)
+        return TempError;
 
     //* J (IV) and JInc (ginc32(J))
     uint8_t J[16] =    {IV[0],IV[1],IV[2],IV[3],IV[4],IV[5],IV[6],IV[7],IV[8],IV[9],IV[10],IV[11],0,0,0,1};
@@ -341,6 +344,8 @@ bool AES_GCM_Dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size_t A
 
     //* Initial hash block must be 0.
     uint8_t* Hash = calloc(16, 1);
+    if (Hash == NULL)
+        return malloc_error;
     uint8_t LenBuf[16];
     size_t TempASize = ASize<<3;
     size_t TempCSize = CSize<<3;
@@ -357,7 +362,9 @@ bool AES_GCM_Dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size_t A
     ghash(H, LenBuf, 16, Hash);
 
     //* Encrypt Hash with Key (Tag)
-    gctr(Hash, 16, Key, J);
+    TempError = gctr(Hash, 16, Key, J);
+    if (TempError != success)
+        return TempError;
 
     //* Validates (Ciphertext + AAD + Tag)
     bool IsValid = true;
@@ -367,25 +374,30 @@ bool AES_GCM_Dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size_t A
     
     //* If invalid, return without modifying Ciphertext.
     if (IsValid == false)
-        return false;
+        return unknown_error;
     
     //* Decipher Ciphertext and return true.
-    gctr(Ciphertext, CSize, Key, JInc);
-    return true;
+    TempError = gctr(Ciphertext, CSize, Key, JInc);
+    return TempError;
 }
 
 
 //? AES-GCM-SIV Implementation
 
-uint8_t* AES_GCM_SIV_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV)
+ErrorCode aes_siv_enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV, uint8_t** RetTag);
 {
     //* Allocate and initialize EncKey and AuthKey
     uint8_t EncKey[32];
     uint8_t AuthKey[16];
-    siv_derive_keys(Key, IV, EncKey, AuthKey);
+    ErrorCode TempError;
+    TempError = siv_derive_keys(Key, IV, EncKey, AuthKey);
+    if (TempError != success)
+        return TempError;
 
     //* mallloc Tag (initialized to 0).
     uint8_t* Tag = calloc(16, 1);
+    if (Tag == NULL)
+        return malloc_error;
 
     //* Calculate Length Block for polyval later. (Bit size)
     uint64_t LenBlock[2] = {(ASize<<3), (PSize<<3)};
@@ -403,38 +415,51 @@ uint8_t* AES_GCM_SIV_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, s
     Tag[15]  &= 0x7F;
 
     //* Produce final Tag version
-    aes_std_enc(Tag, EncKey);
+    TempError = aes_std_enc(Tag, EncKey);
+    if (TempError != success)
+        return TempError;
 
     //* Generates ICB for SivCtr
     uint8_t ICB[16] = {Tag[0], Tag[1], Tag[2], Tag[3], Tag[4], Tag[5], Tag[6], Tag[7], Tag[8], Tag[9], Tag[10], Tag[11], Tag[12], Tag[13], Tag[14], (Tag[15] | 0x80)};
 
     //* Encrypt Plaintext with SivCtr (Ciphertext)
-    sivctr(Plaintext, PSize, EncKey, ICB);
+    TempError = sivctr(Plaintext, PSize, EncKey, ICB);
+    if (TempError != success)
+        return TempError;
 
-    //! Needs to be de-allocated
-    return Tag;
+    *RetTag = Tag;
+
+    return success;
 }
 
-bool AES_GCM_SIV_Dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size_t ASize, const uint8_t* Tag, const uint8_t* Key, const uint8_t* IV)
+ErrorCode aes_siv_dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV, const uint8_t* Tag);
 {
     //* Allocate and initialize EncKey and AuthKey
     uint8_t EncKey[32];
     uint8_t AuthKey[16];
-    siv_derive_keys(Key, IV, EncKey, AuthKey);
+    ErrorCode TempError;
+    TempError = siv_derive_keys(Key, IV, EncKey, AuthKey);
+    if (TempError != success)
+        return TempError;
 
     //* Generates ICB for SivCtr
     uint8_t ICB[16] = {Tag[0], Tag[1], Tag[2], Tag[3], Tag[4], Tag[5], Tag[6], Tag[7], Tag[8], Tag[9], Tag[10], Tag[11], Tag[12], Tag[13], Tag[14], (Tag[15] | 0x80)};
 
     //* Malloc a Plaintext for indirect encryption, to prevent unauthenticated output.
     uint8_t* Plaintext = malloc(CSize);
+    if (Plaintext == NULL)
+        return malloc_error;
     for(int i = 0; i < CSize; i++)
         Plaintext[i] = Ciphertext[i];
 
     //* Decrypt Plaintext with SivCtr
-    sivctr(Plaintext, CSize, EncKey, ICB);
+    TempError = sivctr(Plaintext, CSize, EncKey, ICB);
+    if (TempError != success)
+        return TempError;
 
     //* mallloc Tag (initialized to 0).
-    uint8_t* PolyHash = calloc(16, 1);
+    //// uint8_t* PolyHash = calloc(16, 1);
+    uint8_t PolyHash[16] = {0}; //! Untested
 
     //* Calculate Length Block for polyval later.
     uint64_t LenBlock[2] = {(ASize<<3), (CSize<<3)};
@@ -450,7 +475,9 @@ bool AES_GCM_SIV_Dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size
 
     //* Clear MSB of last byte in Tag, then encrypt.
     PolyHash[15]  &= 0x7F;
-    aes_std_enc(PolyHash, EncKey);
+    TempError = aes_std_enc(PolyHash, EncKey);
+    if (TempError != success)
+        return TempError;
 
     //* Validate Tag in constant time.
     bool IsInvalid = false;
@@ -465,24 +492,24 @@ bool AES_GCM_SIV_Dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size
         for (int i = 0; i < CSize; i++)
             Ciphertext[i] = Plaintext[i];    
         free(Plaintext);
-        return true;
+        return success;
     }
 
-    return false;
+    return unknown_error;
 }
 
 
 //? AES non-standard test functions
 
-uint8_t* aes_generate_key(uint32_t Seed)
-{
-    srand(Seed);
-    uint8_t* Key256 = malloc(32);
+// uint8_t* aes_generate_key(uint32_t Seed)
+// {
+//     srand(Seed);
+//     uint8_t* Key256 = malloc(32);
 
-    for (int i = 0; i < 32; i++)
-        Key256[i] = rand() % 256;
-    return Key256;
-}
+//     for (int i = 0; i < 32; i++)
+//         Key256[i] = rand() % 256;
+//     return Key256;
+// }
 
 uint8_t* aes_generate_iv(uint32_t Seed, size_t Size)
 {
@@ -792,7 +819,7 @@ static ErrorCode gctr(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const
     return success;
 }
 
-static void siv_derive_keys(const uint8_t* MasterKey, const uint8_t* IV, uint8_t* EncKey, uint8_t* AuthKey)
+static ErrorCode siv_derive_keys(const uint8_t* MasterKey, const uint8_t* IV, uint8_t* EncKey, uint8_t* AuthKey)
 {
     //? AuthKey
     //* Generates TempAuthKey for AuthKey (16 bytes)
@@ -809,7 +836,11 @@ static void siv_derive_keys(const uint8_t* MasterKey, const uint8_t* IV, uint8_t
 
     //* Encrypts each block in TempAuthKey
     for (int i = 0; i < 2; i++)
-        aes_std_enc(TempAuthKey[i], MasterKey);
+    {
+        ErrorCode TempError = aes_std_enc(TempAuthKey[i], MasterKey);
+        if (TempError != success)
+            return TempError;
+    }
 
     //* Assigns the first 8 bytes of TempAuthKey[i] to AuthKey (16 bytes)
     for (int i = 0; i < 2; i++)
@@ -832,14 +863,18 @@ static void siv_derive_keys(const uint8_t* MasterKey, const uint8_t* IV, uint8_t
 
     //* Encrypts each block in TempEncKey
     for (int i = 0; i < 4; i++)
-        aes_std_enc(TempEncKey[i], MasterKey);
+    {
+        ErrorCode TempError = aes_std_enc(TempEncKey[i], MasterKey);
+        if (TempError != success)
+            return TempError;
+    }
     
     //* Assigns the first 8 bytes of TempEncKey[i] to EncKey (32 bytes)
     for (int i = 0; i < 4; i++)
         for (int j = 0; j < 8; j++)
             EncKey[i*8+j] = TempEncKey[i][j];
     
-    return;
+    return success;
 }
 
 static void polyval(const uint8_t* H, const uint8_t* Block, size_t Size, uint8_t* Output)
@@ -921,7 +956,7 @@ static void sblockmul(const uint8_t* X, const uint8_t* Y, uint8_t* Result)
     return;
 }
 
-static void sivctr(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* IV)
+static ErrorCode sivctr(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* IV)
 {
     //* Setup CtrBlock and StreamBlock
     uint8_t CtrBlock[16] = {IV[0], IV[1], IV[2], IV[3], IV[4], IV[5], IV[6], IV[7], IV[8], IV[9], IV[10], IV[11], IV[12], IV[13], IV[14], IV[15]};
@@ -932,7 +967,9 @@ static void sivctr(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const ui
         //* Gen StreamBlock
         for (int j = 0; j < 16; j++)
             StreamBlock[j] = CtrBlock[j];
-        aes_std_enc(StreamBlock, Key);
+        ErrorCode TempError = aes_std_enc(StreamBlock, Key);
+        if (TempError != success)
+            return TempError;
 
         //* Increment CtrBlock (First 4 bytes as uint32_t LE)
         ((uint32_t*) CtrBlock)[0]++;
@@ -944,7 +981,9 @@ static void sivctr(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const ui
     //* Gen StreamBlock
     for (int j = 0; j < 16; j++)
         StreamBlock[j] = CtrBlock[j];
-    aes_std_enc(StreamBlock, Key);
+    ErrorCode TempError = aes_std_enc(StreamBlock, Key);
+    if (TempError != success)
+        return TempError;
 
     //* Encrypt Plaintext (Incomplete block)
     for (size_t j = 0; j < Size%16; j++)

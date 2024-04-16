@@ -60,8 +60,8 @@ int main()
     //* Variables are all PascalCase (they look neat)
 
     uint8_t Temp[16] = {15, 22, 96, 220, 32, 250, 200, 97, 82, 53, 100, 152, 132, 198, 10, 5};
-    uint8_t* TempKey = aes_generate_key(69);
-    ByteArr* RetArr;    // Must free RetArr.
+    uint8_t* TempKey = aes_generate_iv(69, 32);
+    ByteArr* RetArr;    // Must free RetArr->Arr.
 
     aes_ecb_enc(Temp, sizeof(Temp), TempKey, RetArr);
     aes_ecb_dec(RetArr->Arr, RetArr->Size, TempKey, RetArr);
