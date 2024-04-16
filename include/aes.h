@@ -46,8 +46,8 @@ ErrorCode aes_ecb_dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key
 /// @param Size The size of said uint8_t array.
 /// @param Key 32-byte key to encrypt the Plaintext
 /// @param IV A 16-byte, randomly chosen, Initialization vector. Does not have to be hidden.
-/// @returns A ByteArr struct containing an allocated uint8_t array to the ciphertext, and the size of said array. The array pointer must be de-allocated to prevent memory leaks.
-/// @note Will return NULL pointer and a size of 0 if invalid.
+/// @param Ret A ByteArr struct with the return info within it. User must de-allocate Ret->Arr to prevent memory leak.
+/// @returns ErrorCode (success, unknown_error, malloc_error)
 ErrorCode aes_cbc_enc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* IV, ByteArr* Ret);
 
 /// @brief A CBC decryption implementation of AES-256.
@@ -55,8 +55,8 @@ ErrorCode aes_cbc_enc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key,
 /// @param Size The size of said uint8_t array, must be a multiple of 16, else it is invalid.
 /// @param Key 32-byte key to decrypt the Ciphertext
 /// @param IV A 16-byte, randomly chosen, Initialization vector. Does not have to be hidden.
-/// @returns A ByteArr struct containing an allocated uint8_t array to the plaintext, and the size of said array. The array pointer must be de-allocated to prevent memory leaks.
-/// @note Will return NULL pointer and a size of 0 if invalid.
+/// @param Ret A ByteArr struct with the return info within it. User must de-allocate Ret->Arr to prevent memory leak.
+/// @returns ErrorCode (success, unknown_error, malloc_error)
 ErrorCode aes_cbc_dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key, const uint8_t* IV, ByteArr* Ret);
 
 /// @brief Encrypts Plaintext while also generating Tag to prove that neither AAD or Ciphertext were been altered (Authenticated Encryption).
@@ -66,19 +66,20 @@ ErrorCode aes_cbc_dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key
 /// @param ASize Size of AAD in bytes.
 /// @param Key 256-bit (32 byte) key.
 /// @param IV 96-bit (12 byte) randomly generated value.
-/// @returns An allocated 128-bit tag (16 bytes). Used to prove Ciphertext has not been altered.
-uint8_t* AES_GCM_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV);
+/// @param Tag A pointer to a 128-bit (16 byte) tag that validates that Ciphertext and AAD have not been altered. Must be de-allocated by the user to prevent memory leaks.
+/// @returns ErrorCode (success, unknown_error, malloc_error)
+uint8_t* aes_gcm_enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV, uint8_t** Tag);
 
 /// @brief Decrypts Ciphertext while also validating Tag to prove that neither AAD or Ciphertext were altered (Authenticated Decryption).
 /// @param Ciphertext Ciphertext of any size, directly altered into Plaintext.
 /// @param CSize Size of Ciphertext in bytes.
 /// @param AAD Additional Authenticated Data (AAD) associated with Ciphertext (generated together) to validate.
 /// @param ASize Size of AAD in bytes.
-/// @param Tag 128-bit (16 byte) tag that validates that Ciphertext and AAD have not been altered.
 /// @param Key 256-bit (32 byte) key.
 /// @param IV 96-bit (12 byte) IV.
+/// @param Tag 128-bit (16 byte) tag that validates that Ciphertext and AAD have not been altered.
 /// @returns A boolean value on whether or not the decryption was valid. If invalid, Ciphertext was not altered.
-bool AES_GCM_Dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size_t ASize, const uint8_t* Tag, const uint8_t* Key, const uint8_t* IV);
+bool aes_gcm_dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV, const uint8_t* Tag);
 
 /// @brief Encrypts Plaintext while also generating Tag to prove that neither the AAD or Ciphertext were altered (Authenticated Encryption).
 /// @param Plaintext Plaintext of any size, directly altered into Ciphertext.

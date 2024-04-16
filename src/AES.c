@@ -282,21 +282,28 @@ ErrorCode aes_cbc_dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key
 
 //? AES-GCM implementation
 
-uint8_t* AES_GCM_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV)
+uint8_t* aes_gcm_enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV, uint8_t** Tag);
 {
     //* Zero block (encrypted)
     uint8_t H[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-    aes_std_enc(H, Key);
+    ErrorCode TempError;
+    TempError = aes_std_enc(H, Key);
+    if (TempError != success)
+        return TempError;
 
     //* J (IV) and JInc (ginc32(J))
     uint8_t J[16] =    {IV[0],IV[1],IV[2],IV[3],IV[4],IV[5],IV[6],IV[7],IV[8],IV[9],IV[10],IV[11],0,0,0,1};
     uint8_t JInc[16] = {IV[0],IV[1],IV[2],IV[3],IV[4],IV[5],IV[6],IV[7],IV[8],IV[9],IV[10],IV[11],0,0,0,2};
 
     //* Encrypt Plaintext here via gctr. (Ciphertext)
-    gctr(Plaintext, PSize, Key, JInc);
+    TempError = gctr(Plaintext, PSize, Key, JInc);
+    if (TempError != success)
+        return TempError;
 
     //* Initial hash block must be 0.
     uint8_t* Hash = calloc(16, 1);
+    if (Hash == NULL)
+        return malloc_error;
     uint8_t LenBuf[16];
     size_t TempASize = ASize<<3;
     size_t TempPSize = PSize<<3;
@@ -313,10 +320,13 @@ uint8_t* AES_GCM_Enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_
     ghash(H, LenBuf, 16, Hash);
 
     //* Encrypt Hash with Key (Tag)
-    gctr(Hash, 16, Key, J);
+    TempError = gctr(Hash, 16, Key, J);
+    if (TempError != success)
+        return TempError;
 
-    //! Needs to be de-allocated
-    return Hash;
+    *Tag = Hash;
+
+    return success;
 }
 
 bool AES_GCM_Dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size_t ASize, const uint8_t* Tag, const uint8_t* Key, const uint8_t* IV)
@@ -749,35 +759,37 @@ static void ghash(const uint8_t* H, const uint8_t* Block, size_t Size, uint8_t* 
     return;
 }
 
-static void gctr(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* ICB)
+static ErrorCode gctr(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* ICB)
 {
     //* Prevent Size overflow on last block.
     if (Size == 0)
-        return;
+        return success;
 
     uint8_t Temp[16];
     uint8_t CB[16];
     for (int i = 0; i < 16; i++)
         CB[i] = ICB[i];
-    
+
     //* Generate counter, Encrypt Counter, XOR plaintext block with counter.
-   for (size_t i = 0; i < Size-(Size%16); i+=16)
-   {
-       for (size_t j = 0; j < 16; j++)
+    for (size_t i = 0; i < Size-(Size%16); i+=16)
+    {
+        for (size_t j = 0; j < 16; j++)
             Temp[j] = CB[j];
-       aes_std_enc(Temp, Key);
-       for (int j = 0; j < 16; j++)
+        if (aes_std_enc(Temp, Key) != success);
+            return unknown_error;
+        for (int j = 0; j < 16; j++)
             Plaintext[i+j] ^= Temp[j];
-       ginc32(CB);
-   } 
-   //* Final Block (works on incomplete blocks)
-   for (int j = 0; j < 16; j++)
-       Temp[j] = CB[j];
-   aes_std_enc(Temp, Key);
-   for (size_t j = 0; j < Size%16; j++)
+        ginc32(CB);
+    } 
+    //* Final Block (works on incomplete blocks)
+    for (int j = 0; j < 16; j++)
+        Temp[j] = CB[j];
+    if (aes_std_enc(Temp, Key) != success)
+        return unknown_error;
+    for (size_t j = 0; j < Size%16; j++)
         Plaintext[Size-(Size%16)+j] ^= Temp[j];
 
-    return;
+    return success;
 }
 
 static void siv_derive_keys(const uint8_t* MasterKey, const uint8_t* IV, uint8_t* EncKey, uint8_t* AuthKey)
