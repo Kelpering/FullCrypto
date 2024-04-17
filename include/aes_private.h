@@ -115,14 +115,14 @@ static void ghash(const uint8_t* H, const uint8_t* Block, size_t Size, uint8_t* 
 /// @param Key The key to encrypt Plaintext and decrypt Ciphertext with. 
 /// @param ICB The Initial Counter Block (IV).
 /// @note This function works forwards and backwards. Plaintext is encrypted on the first run, and decrypted on the second (identical) run.
-static void gctr(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* ICB);
+static ErrorCode gctr(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* ICB);
 
 /// @brief Derives EncKey and AuthKey from MasterKey, using the existing IV.
 /// @param MasterKey The 32-byte key given in the GCM-SIV function call.
 /// @param IV The 12-byte IV given in the GCM-SIV function call.
 /// @param EncKey Pre-allocated, 32-byte array to store EncKey in.
 /// @param AuthKey Pre-allocated, 32-byte array to store AuthKey in.
-static void siv_derive_keys(const uint8_t* MasterKey, const uint8_t* IV, uint8_t* EncKey, uint8_t* AuthKey);
+static ErrorCode siv_derive_keys(const uint8_t* MasterKey, const uint8_t* IV, uint8_t* EncKey, uint8_t* AuthKey);
 
 /// @brief Returns X*Y in GF(2^128) into Result (GCM-SIV).
 /// @param X A uint8_t[16] that represents a 128-bit number.
@@ -138,7 +138,7 @@ static void sblockmul(const uint8_t* X, const uint8_t* Y, uint8_t* Result);
 /// @note Due to how the GHash function works, the final hash block can be put into Output to "concatenate" the byte strings (on full 16-byte blocks).
 static void polyval(const uint8_t* H, const uint8_t* Block, size_t Size, uint8_t* Output);
 
-static void sivctr(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* IV);
+static ErrorCode sivctr(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const uint8_t* IV);
 
 /// @brief Applies SBox[] to a Byte, but via calculations instead of an array.
 /// @returns SBox[Byte].
