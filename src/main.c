@@ -60,40 +60,42 @@ int main()
     //* Variables are all PascalCase (they look neat)
 
     uint8_t Temp[16] = {15, 22, 96, 220, 32, 250, 200, 97, 82, 53, 100, 152, 132, 198, 10, 5};
+    uint8_t Tag[16];
     uint8_t* TempKey = aes_generate_iv(69, 32);
     uint8_t* TempIV16 = aes_generate_iv(96, 16);
     uint8_t* TempIV12 = aes_generate_iv(96, 12);
     ByteArr RetArr;    // Must free RetArr->Arr.
-    uint8_t* TagPtr;
 
     printf("CORRECT: ");
     PrintInfo(Temp, sizeof(Temp), false);
 
-    //* ECB
+    //* ECB (Allocates Text)
     aes_ecb_enc(Temp, sizeof(Temp), TempKey, &RetArr);
     aes_ecb_dec(RetArr.Arr, RetArr.Size, TempKey, &RetArr);
     PrintInfo(RetArr.Arr, RetArr.Size, false);
     free(RetArr.Arr);
 
-    // //* CBC
+    //* CBC (Allocates Text)
     aes_cbc_enc(Temp, sizeof(Temp), TempKey, TempIV16, &RetArr);
     aes_cbc_dec(RetArr.Arr, RetArr.Size, TempKey, TempIV16, &RetArr);
     PrintInfo(RetArr.Arr, RetArr.Size, false);
     free(RetArr.Arr);
 
 
-    // //* GCM
-    aes_gcm_enc(Temp, sizeof(Temp), NULL, 0, TempKey, TempIV12, &TagPtr);
-    aes_gcm_dec(Temp, sizeof(Temp), NULL, 0, TempKey, TempIV12, &TagPtr);
+    //* GCM (Overwrites Text)
+    //! Untested
+    aes_gcm_enc(Temp, sizeof(Temp), NULL, 0, TempKey, TempIV12, Tag);
+    aes_gcm_dec(Temp, sizeof(Temp), NULL, 0, TempKey, TempIV12, Tag);
     PrintInfo(Temp, sizeof(Temp), false);
-    free(TagPtr);
+    PrintInfo(Tag, 16, false);  
 
 
-    // //* GCM-SIV
-    // aes_siv_enc(Temp, sizeof(Temp), NULL, 0, TempKey, TempIV12, &Tag);
-    // aes_siv_dec(RetArr->Arr, RetArr->Size, NULL, 0, TempKey, TempIV12, &Tag);
-    // PrintInfo(RetArr->Arr, RetArr->Size, false);
-    free(RetArr.Arr);
+    // * GCM-SIV (Overwrites Text)
+    //! Untested
+    aes_siv_enc(Temp, sizeof(Temp), NULL, 0, TempKey, TempIV12, Tag);
+    aes_siv_dec(Temp, sizeof(Temp), NULL, 0, TempKey, TempIV12, Tag);
+    PrintInfo(Temp, sizeof(Temp), false);
+    PrintInfo(Tag, sizeof(Tag), false);
 
     return 0;
 }

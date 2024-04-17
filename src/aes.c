@@ -406,7 +406,7 @@ ErrorCode aes_gcm_dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, siz
 
 //? AES-GCM-SIV Implementation
 
-ErrorCode aes_siv_enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV, uint8_t** RetTag)
+ErrorCode aes_siv_enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV, uint8_t* Tag)
 {
     //* Allocate and initialize EncKey and AuthKey
     uint8_t EncKey[32];
@@ -416,10 +416,9 @@ ErrorCode aes_siv_enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size
     if (TempError != success)
         return TempError;
 
-    //* mallloc Tag (initialized to 0).
-    uint8_t* Tag = calloc(16, 1);
-    if (Tag == NULL)
-        return malloc_error;
+    //* Assume RetTag is already allocated (Dynamic or Static) (initialized to 0).
+    for (int i = 0; i < 16; i++)
+        Tag[i] = 0;
 
     //* Calculate Length Block for polyval later. (Bit size)
     uint64_t LenBlock[2] = {(ASize<<3), (PSize<<3)};
@@ -454,8 +453,6 @@ ErrorCode aes_siv_enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size
         free(Tag);
         return TempError;
     }
-
-    *RetTag = Tag;
 
     return success;
 }
@@ -526,6 +523,7 @@ ErrorCode aes_siv_dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, siz
         free(Plaintext);
         return success;
     }
+    
     free(Plaintext);
     return unknown_error;
 }
