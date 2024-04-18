@@ -57,7 +57,7 @@ ErrorCode hash_md5(void* Data, size_t Size, uint8_t* RetArr)
 
     //? Calculate the Hash
 
-    //! If I change ABCD to State[4], there might be code Size optimization to be had.☻
+    //! If I change ABCD to State[4], there might be code Size optimization to be had.
     // Beginning values for (A, B, C, D)
     uint32_t A = 0x67452301;
     uint32_t B = 0xefcdab89;

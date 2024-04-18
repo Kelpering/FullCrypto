@@ -306,7 +306,7 @@ ErrorCode aes_cbc_dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key
 ErrorCode aes_gcm_enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV, uint8_t** RetTag)
 {
     //* Zero block (encrypted)
-    uint8_t H[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    uint8_t H[16] = {0};
     ErrorCode TempError;
     TempError = aes_std_enc(H, Key);
     if (TempError != success)
@@ -326,12 +326,18 @@ ErrorCode aes_gcm_enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size
     if (Hash == NULL)
         return malloc_error;
     uint8_t LenBuf[16];
+    //^ TempSizes are endian dependent. Convert (even if already) little endian
     size_t TempASize = ASize<<3;
     size_t TempPSize = PSize<<3;
     for(int i = 0; i < 8; i++)
     {
-        LenBuf[i] = ((uint8_t*) &TempASize)[7-i];
-        LenBuf[i+8] = ((uint8_t*) &TempPSize)[7-i];
+        // LenBuf[i] = ((uint8_t*) &TempASize)[7-i];
+        // LenBuf[i+8] = ((uint8_t*) &TempPSize)[7-i];
+
+        //^ Take Largest to Smallest TempSize
+        //! Untested
+        LenBuf[i] = (TempASize >> (7-i)*(8)) & 0xFF
+        LenBuf[i + 8] = (TempPSize >> (7-i)*(8)) & 0xFF
     }
 
     //* Hash = ghash(AAD+0 Pad + PSize + 0 Pad + ASize[bits] + PSize[bits])
@@ -356,7 +362,7 @@ ErrorCode aes_gcm_enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size
 ErrorCode aes_gcm_dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV, const uint8_t* Tag)
 {
     //* Zero block (encrypted)
-    uint8_t H[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    uint8_t H[16] = {0};
     ErrorCode TempError;
     TempError = aes_std_enc(H, Key);
     if (TempError != success)
@@ -374,8 +380,12 @@ ErrorCode aes_gcm_dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, siz
     size_t TempCSize = CSize<<3;
     for(int i = 0; i < 8; i++)
     {
-        LenBuf[i] = ((uint8_t*) &TempASize)[7-i];
-        LenBuf[i+8] = ((uint8_t*) &TempCSize)[7-i];
+        // LenBuf[i] = ((uint8_t*) &TempASize)[7-i];
+        // LenBuf[i+8] = ((uint8_t*) &TempCSize)[7-i];
+
+        //! Untested
+        LenBuf[i] = (TempASize >> (7-i)*(8)) & 0xFF
+        LenBuf[i + 8] = (TempCSize >> (7-i)*(8)) & 0xFF
     }
 
     //* Hash = ghash(AAD+0 Pad + PSize + 0 Pad + ASize[bits] + PSize[bits])
@@ -737,6 +747,7 @@ static uint8_t ginv(uint8_t Byte)
 
 static void ginc32(uint8_t* Block)
 {
+    //^ endian depdenent? 
     //* Reverses the endian of Block (as a 128-bit number) to allow for proper increment.
     uint32_t Temp = (Block[12] << 24) | (Block[13] << 16) | (Block[14] << 8) | Block[15];
     Temp++;
@@ -846,8 +857,15 @@ static ErrorCode siv_derive_keys(const uint8_t* MasterKey, const uint8_t* IV, ui
     uint8_t TempAuthKey[2][16];
     for (int i = 0; i < 2; i++)
     {
+        //^ Endian Dependent
+        //! Neither endian's in this func are tested
         //* Should be little endian
-        ((uint32_t*) TempAuthKey[i])[0] = i;
+        // ((uint32_t*) TempAuthKey[i])[0] = i;
+        TempAuthKey[i][0] = i;
+        TempAuthKey[i][1] = 0;
+        TempAuthKey[i][2] = 0;
+        TempAuthKey[i][3] = 0;
+
 
         //* Rest is IV
         for (int j = 0; j < 12; j++)
@@ -873,8 +891,14 @@ static ErrorCode siv_derive_keys(const uint8_t* MasterKey, const uint8_t* IV, ui
     uint8_t TempEncKey[4][16];
     for (int i = 0; i < 4; i++)
     {
+        //^ Endian Dependent
         //* Should be little endian
-        ((uint32_t*) TempEncKey[i])[0] = i+2;
+        // ((uint32_t*) TempEncKey[i])[0] = i+2;
+        TempEncKey[i][0] = i+2;
+        TempEncKey[i][1] = 0;
+        TempEncKey[i][2] = 0;
+        TempEncKey[i][3] = 0;
+
 
         //* Rest is IV
         for (int j = 0; j < 12; j++)

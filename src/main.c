@@ -16,8 +16,8 @@ int main()
 {   
     //^ TODO
     //^ Refactor code to look nice
-    //^ Add error detection / reporting (Malloc, failure to encrypt/decrypt, etc).
-    //^ Standardize function I/O
+    //* Add error detection / reporting (Malloc, failure to encrypt/decrypt, etc).
+    //* Standardize function I/O
     //^ Fix all Endian aligned data manip to be compatible cross platform.
     //^ Document / Re-document code
 
@@ -53,6 +53,16 @@ int main()
     //!     Use for important or deprecated (such as malloc)
     //^     TODO code
     //?     sections of code (like functions). Header comment
+
+    //^ Data storage and manip (Host Endianness)
+    //* uint's should not matter unless being used to store data.
+    //* All data storage should be byte-by-byte, not in larger uints, unless arithemtic is performed
+    //* arithmetic should not matter to endianness unless the input/output is undefined
+    //* All numbers larger than a byte should be stored in byte-sized Little Endian format.
+    //? Big-endian =    Most->Least    Hundreds->Tens->Ones
+    //? Little-endian = Least->Most    Ones->Tens->Hundreds
+    //* If not a number, but a data structure, endian should not matter.
+    //^ Rewrite all of hash, very endian dependent, also looks awful
 
     //^ Misc
     //* Remove pragma once and replace with standard include guard

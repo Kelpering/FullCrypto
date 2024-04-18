@@ -107,12 +107,6 @@ ErrorCode aes_siv_dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, siz
 
 //* Non-standard generator functions
 
-// /// @brief Generates a random 32-byte key for use in AES-256 functions.
-// /// @param Seed A 32-bit seed value for the rand generator. Recommended to use time(NULL) for the seed.
-// /// @returns an allocated, 32-byte array for use in AES functions. Must be de-allocated to prevent memory leaks.
-// /// @warning This function is insecure and should only be used for convenient testing.
-// uint8_t* aes_generate_key(uint32_t Seed);
-
 /// @brief Generates a random 16-byte IV for use with CBC.
 /// @param Seed A random number to initialize srand(). Recommended to use time(NULL).
 /// @returns An allocated 16-byte array. Must be de-allocated to prevent memory leaks.
