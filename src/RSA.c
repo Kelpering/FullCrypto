@@ -1,5 +1,5 @@
-#include "../include/RSA.h"
-#include "../include/MD5.h"
+#include "../include/rsa.h"
+#include "../include/md5.h"
 
 // To all: Assume that all inputs are valid
 // Only check if internal error would be caused.
