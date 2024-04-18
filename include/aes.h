@@ -7,6 +7,8 @@
 #include "../include/bytearr.h"
 #include "../include/error.h"
 
+//! Majority of this has to be redocumented.
+
 
 //* AES Standards
 
@@ -68,7 +70,7 @@ ErrorCode aes_cbc_dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key
 /// @param IV 96-bit (12 byte) randomly generated value.
 /// @param Tag A pointer to a 128-bit (16 byte) tag that validates that Ciphertext and AAD have not been altered. Must be de-allocated by the user to prevent memory leaks.
 /// @returns ErrorCode (success, unknown_error, malloc_error)
-ErrorCode aes_gcm_enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV, uint8_t** RetTag);
+ErrorCode aes_gcm_enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV, uint8_t* Tag);
 
 /// @brief Decrypts Ciphertext while also validating Tag to prove that neither AAD or Ciphertext were altered (Authenticated Decryption).
 /// @param Ciphertext Ciphertext of any size, directly altered into Plaintext.
@@ -91,7 +93,7 @@ ErrorCode aes_gcm_dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, siz
 /// @param Tag A pointer to a 128-bit (16 byte) tag that validates that Ciphertext and AAD have not been altered.
 /// @returns ErrorCode (Success, unknown_error, malloc_error)
 /// @note GCM-SIV has an advantage over plain GCM in the fact that it is resistant to reusing random values for IV.
-ErrorCode aes_siv_enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV, uint8_t** RetTag);
+ErrorCode aes_siv_enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV, uint8_t* Tag);
 
 /// @brief Decrypts Ciphertext while also validating Tag to prove that neither AAD or Ciphertext were altered (Authenticated Decryption).
 /// @param Ciphertext Ciphertext of any size, directly altered into Plaintext.

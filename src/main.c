@@ -15,7 +15,7 @@ void StrToHex(char *Str);
 int main()
 {   
     //^ TODO
-    //^ Refactor code to look nice
+    //^ Refactor code to look nice (Reprogram the entire thing)
     //* Add error detection / reporting (Malloc, failure to encrypt/decrypt, etc).
     //* Standardize function I/O
     //^ Fix all Endian aligned data manip to be compatible cross platform.
@@ -75,36 +75,41 @@ int main()
     uint8_t* TempIV16 = aes_generate_iv(96, 16);
     uint8_t* TempIV12 = aes_generate_iv(96, 12);
     ByteArr RetArr;    // Must free RetArr->Arr.
+    void* TempPtr;
 
     printf("CORRECT: ");
     PrintInfo(Temp, sizeof(Temp), false);
 
     //* ECB (Allocates Text)
     aes_ecb_enc(Temp, sizeof(Temp), TempKey, &RetArr);
+    TempPtr = RetArr.Arr;
     aes_ecb_dec(RetArr.Arr, RetArr.Size, TempKey, &RetArr);
+    free(TempPtr);
     PrintInfo(RetArr.Arr, RetArr.Size, false);
     free(RetArr.Arr);
 
     //* CBC (Allocates Text)
     aes_cbc_enc(Temp, sizeof(Temp), TempKey, TempIV16, &RetArr);
+    TempPtr = RetArr.Arr;
     aes_cbc_dec(RetArr.Arr, RetArr.Size, TempKey, TempIV16, &RetArr);
+    free(TempPtr);
     PrintInfo(RetArr.Arr, RetArr.Size, false);
     free(RetArr.Arr);
 
 
     //* GCM (Overwrites Text)
-    //! Untested
     aes_gcm_enc(Temp, sizeof(Temp), NULL, 0, TempKey, TempIV12, Tag);
     aes_gcm_dec(Temp, sizeof(Temp), NULL, 0, TempKey, TempIV12, Tag);
     PrintInfo(Temp, sizeof(Temp), false);
-    PrintInfo(Tag, 16, false);  
+    printf("\nTag: ");
+    PrintInfo(Tag, 16, false);
 
 
     // * GCM-SIV (Overwrites Text)
-    //! Untested
     aes_siv_enc(Temp, sizeof(Temp), NULL, 0, TempKey, TempIV12, Tag);
     aes_siv_dec(Temp, sizeof(Temp), NULL, 0, TempKey, TempIV12, Tag);
     PrintInfo(Temp, sizeof(Temp), false);
+    printf("\nTag: ");
     PrintInfo(Tag, sizeof(Tag), false);
 
     return 0;

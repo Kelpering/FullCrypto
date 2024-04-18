@@ -248,7 +248,7 @@ ErrorCode aes_cbc_enc(const uint8_t* Plaintext, size_t Size, const uint8_t* Key,
         free(Ret->Arr);
         return TempError;
     }
-
+    
     return success;
 }
 
@@ -291,9 +291,9 @@ ErrorCode aes_cbc_dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key
     }
 
     //? Copy over Temp to ByteArr
-    for (size_t i = 0; i < 32; i++)
+    for (size_t i = 0; i < Ret->Size; i++)
         Ret->Arr[i] = Temp[i];
-
+        
     //? Free allocated Temp
     free(Temp);
     
@@ -303,7 +303,7 @@ ErrorCode aes_cbc_dec(const uint8_t* Ciphertext, size_t Size, const uint8_t* Key
 
 //? AES-GCM implementation
 
-ErrorCode aes_gcm_enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV, uint8_t** RetTag)
+ErrorCode aes_gcm_enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size_t ASize, const uint8_t* Key, const uint8_t* IV, uint8_t* Tag)
 {
     //* Zero block (encrypted)
     uint8_t H[16] = {0};
@@ -336,8 +336,8 @@ ErrorCode aes_gcm_enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size
 
         //^ Take Largest to Smallest TempSize
         //! Untested
-        LenBuf[i] = (TempASize >> (7-i)*(8)) & 0xFF
-        LenBuf[i + 8] = (TempPSize >> (7-i)*(8)) & 0xFF
+        LenBuf[i] = (TempASize >> (7-i)*(8)) & 0xFF;
+        LenBuf[i + 8] = (TempPSize >> (7-i)*(8)) & 0xFF;
     }
 
     //* Hash = ghash(AAD+0 Pad + PSize + 0 Pad + ASize[bits] + PSize[bits])
@@ -354,7 +354,9 @@ ErrorCode aes_gcm_enc(uint8_t* Plaintext, size_t PSize, const uint8_t* AAD, size
         return TempError;
     }
 
-    *RetTag = Hash;
+    //* Assume tag is allocated
+    for (int i = 0; i < 16; i++)
+        Tag[i] = Hash[i];
 
     return success;
 }
@@ -384,8 +386,8 @@ ErrorCode aes_gcm_dec(uint8_t* Ciphertext, size_t CSize, const uint8_t* AAD, siz
         // LenBuf[i+8] = ((uint8_t*) &TempCSize)[7-i];
 
         //! Untested
-        LenBuf[i] = (TempASize >> (7-i)*(8)) & 0xFF
-        LenBuf[i + 8] = (TempCSize >> (7-i)*(8)) & 0xFF
+        LenBuf[i] = (TempASize >> (7-i)*(8)) & 0xFF;
+        LenBuf[i + 8] = (TempCSize >> (7-i)*(8)) & 0xFF;
     }
 
     //* Hash = ghash(AAD+0 Pad + PSize + 0 Pad + ASize[bits] + PSize[bits])
@@ -833,7 +835,7 @@ static ErrorCode gctr(uint8_t* Plaintext, size_t Size, const uint8_t* Key, const
     {
         for (size_t j = 0; j < 16; j++)
             Temp[j] = CB[j];
-        if (aes_std_enc(Temp, Key) != success);
+        if (aes_std_enc(Temp, Key) != success)
             return unknown_error;
         for (int j = 0; j < 16; j++)
             Plaintext[i+j] ^= Temp[j];
