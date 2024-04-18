@@ -85,3 +85,36 @@ ByteArr DecodeArray(mpz_t Num)
 // Depending on how the number has to be encoded/decoded, this might just be the equivalent GMP function
 }
 
+//? Refactored core
+
+// Decide Keysize, modsize(?), messagesize(?), and whether or not the user will be responsible for checking messagesize
+
+//^ Priority: 2
+// Generate a keypair for rsa enc, dec, sign.
+ErrorCode rsa_generate_keypair();
+
+//^ Priority: 1
+//! Use RSA_Encrypt for testing purposes
+// encrypt Plaintext -> Ciphertext with RSA-OAEP
+ErrorCode rsa_oaep_enc();
+
+//^ Priority: 1
+//! Use RSA_Encrypt for testing purposes
+// decrypt Ciphertext -> Plaintext with RSA-OAEP
+ErrorCode rsa_oaep_dec();
+
+//^ Priority: 3
+// Sign Text and return Tag (Tag == Hash of Text + Encrypted with Private)
+ErrorCode rsa_sign();
+
+//^ Priority: 3
+// Verify Text & Tag (Sign & Verify prevent Text from being modified: Hash can only be true if Text is same | Hash can only be encrypted by Private) [verifies both]
+ErrorCode rsa_verify();
+
+//^ Priority: 1
+// Encodes a variable byte array of any size into an mpz_t (which all previous functions require)
+ErrorCode rsa_encode();
+
+//^ Priority: 1
+// Decodes an mpz_t into a variable byte array (ByteArr) [Will Avoid Host-Endian issues, set as Little-Endian default]
+ErrorCode rsa_decode();
