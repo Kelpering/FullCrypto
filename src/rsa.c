@@ -96,7 +96,35 @@ ErrorCode rsa_generate_keypair();
 //^ Priority: 1
 //! Use RSA_Encrypt for testing purposes
 // encrypt Plaintext -> Ciphertext with RSA-OAEP
-ErrorCode rsa_oaep_enc();
+ErrorCode rsa_oaep_enc(uint8_t* Plaintext, size_t PSize, uint8_t* IV, RSAKey PubKey, ByteArr* RetArr)
+{
+    // Directly convert Plaintext num into Ciphertext num
+
+    // Plaintext size in bytes //! Untested
+    // 34 uses hash length output in it, so thats necessary to change.
+    if ((mpz_sizeinbase(Num,2) + 7) / 8 > ((mpz_sizeinbase(PubKey.Mod,2) + 7) / 8)-34)
+        return length_error;
+
+    // lHash = MD5("\0")
+    // PS = ((mpz_sizeinbase(PubKey.Mod,2) + 7) / 8) - ((mpz_sizeinbase(Num,2) + 7) / 8) - 32 - 2 0 Octets
+    // mLen and kLen are used pretty often, also PS is quite large (unknown if true)
+
+    // DB = lHash || PS || 0x01 || Message num
+
+    // seed = 16 bytes of random
+    // dbMask = MGF1(seed, PubKey.Mod-17)
+    // MaskedDb = dbMask ^ DB
+
+    // SeedMask = MGF1(maskedDB, 16)
+    // MaskedSeed = Seed ^ SeedMask
+
+    // EM = 0 || MaskedSeed || MaskedDB
+
+    // All of the above seem to work MUCH better on bytes, not mpz_t.
+    // Make this function take the bytearrs, then use those
+
+    return success;
+}
 
 //^ Priority: 1
 //! Use RSA_Encrypt for testing purposes
