@@ -113,8 +113,27 @@ ErrorCode rsa_verify();
 
 //^ Priority: 1
 // Encodes a variable byte array of any size into an mpz_t (which all previous functions require)
-ErrorCode rsa_encode();
+ErrorCode rsa_encode(uint8_t* Arr, size_t Size, mpz_t RetNum)
+{
+    // Assume RetNum is not initialized
+    //! Untested
+    mpz_init(RetNum);
+    mpz_import(RetNum, Size, 1, 1, 1, 0, Arr);
+
+    return success;
+}
 
 //^ Priority: 1
-// Decodes an mpz_t into a variable byte array (ByteArr) [Will Avoid Host-Endian issues, set as Little-Endian default]
-ErrorCode rsa_decode();
+// Decodes an mpz_t into a variable byte array (ByteArr)
+ErrorCode rsa_decode(mpz_t Num, ByteArr* RetArr)
+{
+    // mpz_export allocates arr of Size bytes, MSB.
+    // We then deallocate mpz_t
+    //! Untested
+    RetArr->Arr = mpz_export(NULL, RetArr->Size, 1, 1, 1, 0, Num);
+    if (RetArr->Arr == NULL)
+        return malloc_error;
+    mpz_clear(Num);
+
+    return success;
+}
