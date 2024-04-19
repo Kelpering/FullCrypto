@@ -1,5 +1,5 @@
 #include "../include/rsa.h"
-#include "../include/md5.h"
+
 
 // To all: Assume that all inputs are valid
 // Only check if internal error would be caused.
@@ -105,7 +105,14 @@ ErrorCode rsa_oaep_dec();
 
 //^ Priority: 3
 // Sign Text and return Tag (Tag == Hash of Text + Encrypted with Private)
+//! Might be subject to change
 ErrorCode rsa_sign();
+
+// RSA encrypt primitive is the mpz_t function with mod powers
+// RSA decrypt primitive is the mpz_t function with mod powers
+// RSA encrypt & decrypt are also identical
+// RSA sign primitive is RSA encrypt primitive with PrivateKey [Verifies that the message came from the private key]
+// RSA verify primitive is RSA decrypt primitive with PublicKey (and check)
 
 //^ Priority: 3
 // Verify Text & Tag (Sign & Verify prevent Text from being modified: Hash can only be true if Text is same | Hash can only be encrypted by Private) [verifies both]
@@ -135,5 +142,24 @@ ErrorCode rsa_decode(mpz_t Num, ByteArr* RetArr)
         return malloc_error;
     mpz_clear(Num);
 
+    return success;
+}
+
+ErrorCode MGF1(uint8_t* Seed, size_t SeedSize, size_t RetSize, uint8_t* RetArr)
+{
+    // Mask Seed (Byte string)
+    // mask length (len of Output for MGF1)
+    // HashOutLen depends on the hash (MD5 for now, 16)
+    // 2^32 * HashOutLen
+    if (RetSize > 68719476736)
+        return length_error;
+
+    //* From 0 -> ceil(masklen/16 [hLen]) - 1 (i)
+        //* Can probably simplify this because masklen will probably be a multiple of 16
+        //* Or use (>> 4)
+    //* Take i, convert into 4 byte word (same as decode) = C
+    //* T = T || MD5(Seed || C)
+
+    //* Return leading RetSize bytes of T as the mask
     return success;
 }

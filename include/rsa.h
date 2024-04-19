@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <gmp.h>
 #include "../include/ByteArr.h"
+#include "../include/error.h"
+#include "../include/md5.h"
 
 typedef struct
 {
