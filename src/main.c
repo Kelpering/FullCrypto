@@ -4,10 +4,12 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include "../include/AES.h"
-#include "../include/Base64.h"
-#include "../include/hash.h"
+#include "../include/bytearr.h"
 #include "../include/error.h"
+#include "../include/aes.h"
+#include "../include/base64.h"
+#include "../include/hash.h"
+#include "../include/rsa.h"
 
 void PrintInfo(uint8_t* Array, size_t Size, bool isString);
 void StrToHex(char *Str);
@@ -69,7 +71,7 @@ int main()
     //* Typedefs are PascalCase
     //* Variables are all PascalCase (they look neat)
 
-    //Playground
+    //? Playground
 
     return 0;
 }
