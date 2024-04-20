@@ -10,3 +10,5 @@ add_executable(FullCrypto ${SOURCES})
 target_compile_options(FullCrypto PRIVATE
     -Wall -Wextra -Wpedantic
 )
+
+target_link_libraries(FullCrypto gmp)
