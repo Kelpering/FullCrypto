@@ -1,5 +1,7 @@
 #include "../include/hash.h"
 
+HashParam MD5Param = {hash_md5, 16};
+
 //* Byte = most significant bit first
 //* Word = 32-bit collection of 4 bytes, 
 //*     LEAST SIGNIFICANT FIRST (This is how C stores uint32_t's. No change needed)

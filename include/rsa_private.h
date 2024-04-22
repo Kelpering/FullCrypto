@@ -13,4 +13,13 @@
 /// @note rsa_encrypt and rsa_decrypt are both identical but are separated to differentiate between encrypting and decrypting.
 #define rsa_decrypt(Ciphertext, PrivKey) mpz_powm(Ciphertext, Ciphertext, PrivKey.Exp, PrivKey.Mod)
 
+// Description needed
+static ErrorCode rsa_encode(uint8_t* Arr, size_t Size, mpz_t RetNum);
+
+// Description needed
+static ErrorCode rsa_decode(mpz_t Num, ByteArr* RetArr);
+
+// Description needed
+static ErrorCode rsa_mgf1(const uint8_t* Seed, size_t SeedSize, size_t RetSize, const HashParam HashFunc, uint8_t* RetArr);
+
 #endif // RSA_PRIVATE_H

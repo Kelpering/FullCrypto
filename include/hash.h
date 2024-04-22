@@ -20,5 +20,6 @@ typedef struct
 /// @param RetArr Pre-allocated array of 16 bytes to hold hash.
 /// @returns Error codes (Finish when rewrite).
 ErrorCode hash_md5(void* Data, size_t Size, uint8_t* RetArr);
+extern HashParam MD5Param;
 
 #endif // MD5_H

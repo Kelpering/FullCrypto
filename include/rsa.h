@@ -15,8 +15,7 @@ typedef struct
     mpz_t Mod;  // Mod is shared between keys; assume Mod is public in both keys.
 } RSAKey;
 
-ErrorCode rsa_encode(uint8_t* Arr, size_t Size, mpz_t RetNum);
-
-ErrorCode rsa_decode(mpz_t Num, ByteArr* RetArr);
+// Genkeypair
+// Encrypt/Decrypt (outer)
 
 #endif // RSA_H
