@@ -98,25 +98,35 @@ ErrorCode rsa_generate_keypair();
 // encrypt Plaintext -> Ciphertext with RSA-OAEP
 ErrorCode rsa_oaep_enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* IV, RSAKey PubKey, ByteArr* RetArr)
 {
-    // Directly convert Plaintext num into Ciphertext num
+    // Hash will be default or #define'd
+    // MGF is MGF_1
+    
+    // Convert Plaintext into mpz_t
 
-    // lHash = MD5("\0")
-    // PS = ((mpz_sizeinbase(PubKey.Mod,2) + 7) / 8) - ((mpz_sizeinbase(Num,2) + 7) / 8) - 32 - 2 0 Octets
-    // mLen and kLen are used pretty often, also PS is quite large (unknown if true)
+    HashParam HashFunc = MD5Param;
 
-    // DB = lHash || PS || 0x01 || Message num
+    // if (Psize > (PubKey.Mod size in bytes)-(2*HashFunc.HashSize) - 2)
+        return length_error;
+    
+    //! Calculate Mod size in bytes here. size_t ModSize;
 
-    // seed = 16 bytes of random
-    // dbMask = MGF1(seed, PubKey.Mod-17)
-    // MaskedDb = dbMask ^ DB
+    uint8_t* LHash = malloc(HashFunc.HashSize);
+    HashFunc.HashFunc(NULL, 0, LHash);
+    //* d41d8cd98f00b204e9800998ecf8427e 
+    //! LHash must equal this hexadecimal
+    //! Either NULL,0 or {'\0'}, 1 as the input
 
-    // SeedMask = MGF1(maskedDB, 16)
-    // MaskedSeed = Seed ^ SeedMask
+    uint8_t* PS = malloc(ModSize - PSize - (2*HashFunc.HashSize) - 2);
+    for (size_t i = 0; i < ModSize - PSize - (2*HashFunc.HashSize) - 2; i++)
+        PS[i] = 0;
 
-    // EM = 0 || MaskedSeed || MaskedDB
+    // DB = LHash || PS || 0x01 || Plaintext
+    // IV is size HashFunc.HashSize, used in future.
+    //! Masks start here (incomplete)
 
-    // All of the above seem to work MUCH better on bytes, not mpz_t.
-    // Make this function take the bytearrs, then use those
+    mpz_t PlainNum;
+    rsa_encode(Plaintext, PSize, PlainNum);
+
 
     return success;
 }
