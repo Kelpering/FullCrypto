@@ -103,29 +103,63 @@ ErrorCode rsa_oaep_enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* IV
     
     // Convert Plaintext into mpz_t
 
+    //! Make MD5Param here be defined
     HashParam HashFunc = MD5Param;
 
-    // if (Psize > (PubKey.Mod size in bytes)-(2*HashFunc.HashSize) - 2)
-        return length_error;
-    
     //! Calculate Mod size in bytes here. size_t ModSize;
 
-    uint8_t* LHash = malloc(HashFunc.HashSize);
-    HashFunc.HashFunc(NULL, 0, LHash);
-    //* d41d8cd98f00b204e9800998ecf8427e 
-    //! LHash must equal this hexadecimal
-    //! Either NULL,0 or {'\0'}, 1 as the input
+    if (Psize > (ModSize)-(2*HashFunc.HashSize) - 2)
+        return length_error;
+    
+    //! DB here is completely untested, make sure this works
+    // uint8_t* DB = malloc(HashFunc.HashSize + ModSize - PSize - (2*HashFunc.HashSize) - 2 + 1 + PSize);
+    //! Should be larger than needed, to account for DBMask later
+    uint8_t* DB = malloc(ModSize - HashFunc.HashSize - 1);
 
-    uint8_t* PS = malloc(ModSize - PSize - (2*HashFunc.HashSize) - 2);
-    for (size_t i = 0; i < ModSize - PSize - (2*HashFunc.HashSize) - 2; i++)
-        PS[i] = 0;
+    //* d41d8cd98f00b204e9800998ecf8427e 
+    //! LHash must equal this hexadecimal (with md5)
+    //! Either NULL,0 or {'\0'}, 1 as the input
+    //* Set the first HashFunc.HashSize bytes to LHash
+    HashFunc.HashFunc(NULL, 0, LHash);
+    
+    //* Set the next variable (down to 0) bytes to 0
+    size_t i;
+    for (i = HashFunc.HashSize; i < ModSize - PSize - (2*HashFunc.HashSize) - 2 + HashFunc.HashSize; i++)
+        DB[i] = 0;
+
+    //* Set the direct next byte to 0x01
+    DB[i++] = 0x01;
+    
+    //* Set the last PSize bytes to Plaintext
+    for (size_t j = 0; i < HashFunc.HashSize + ModSize - PSize - (2*HashFunc.HashSize) - 2 + 1 + PSize; i++)
+        DB[i] = Plaintext[j++];
+
+    uint8_t* DBMask = malloc(ModSize-HashFunc.HashSize-1);
+    rsa_mgf1(IV, HashFunc.HashSize, ModSize-HashFunc.HashSize-1, HashFunc, DBMask);
+
+    for (size_t i = 0; i < ModSize - HashFunc.HashSize - 1; i++)
+        DB[i] ^= DBMask[i];
+
+    uint8_t* SeedMask = malloc(HashFunc.HashSize);
+    rsa_mgf1(DB, ModSize - HashFunc.HashSize - 1, HashFunc, SeedMask);
+
+    for (size_t i = 0; i < HashFunc.HashSize; i++)
+        SeedMask[i] ^= Seed[i];
+
+    //! All previous is untested and is only example
+    // EM = 0x00 || SeedMask || DBMask
+
+    // rsa_encode EM
+    // rsa_encrypt define EM
+    // rsa_decode EM
+    // return EM decoded
+
 
     // DB = LHash || PS || 0x01 || Plaintext
     // IV is size HashFunc.HashSize, used in future.
     //! Masks start here (incomplete)
 
-    mpz_t PlainNum;
-    rsa_encode(Plaintext, PSize, PlainNum);
+    
 
 
     return success;
