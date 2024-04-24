@@ -73,7 +73,7 @@ int main()
 
     //? Playground
 
-    
+    rsa_oaep_enc(Plaintext, PSize, IV, RSAKey, MD5Param, RetArr)
     
     return 0;
 }

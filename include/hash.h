@@ -10,8 +10,8 @@
 /// @param RetSize Size of RetArr array in bytes.
 typedef struct
 {
-    ErrorCode (*HashFunc)(void* Data, size_t Size, uint8_t* RetArr);
-    size_t HashSize;
+    ErrorCode (*Func)(void* Data, size_t Size, uint8_t* RetArr);
+    size_t Size;
 } HashParam;
 
 /// @brief Hashes Data of variable size with the MD5 standard.
