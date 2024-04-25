@@ -72,8 +72,14 @@ int main()
     //* Variables are all PascalCase (they look neat)
 
     //? Playground
+    uint8_t Plaintext[] = {1,2,3,4};
+    uint8_t IV[16] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
+    RSAKey PubKey;
+    mpz_init_set_ui(PubKey.Exp, 123);
+    mpz_init_set_ui(PubKey.Mod, 321);
+    ByteArr RetArr;
 
-    rsa_oaep_enc(Plaintext, PSize, IV, RSAKey, MD5Param, RetArr)
+    rsa_oaep_enc(Plaintext, sizeof(Plaintext), IV, PubKey, MD5Param, &RetArr)
     
     return 0;
 }
