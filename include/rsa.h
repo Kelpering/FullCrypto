@@ -18,4 +18,7 @@ typedef struct
 // Genkeypair
 // Encrypt/Decrypt (outer)
 
+ErrorCode rsa_oaep_enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* IV, const RSAKey PubKey, const HashParam HashFunc, ByteArr* RetArr);
+
+
 #endif // RSA_H

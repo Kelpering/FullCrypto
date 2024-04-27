@@ -79,7 +79,19 @@ int main()
     mpz_init_set_ui(PubKey.Mod, 321);
     ByteArr RetArr;
 
-    rsa_oaep_enc(Plaintext, sizeof(Plaintext), IV, PubKey, MD5Param, &RetArr)
+    //! PubKey.Mod is too small for the function to perform properly.
+    //! Here, 34 bytes minimum + 1 for each byte of plaintext desired.
+    //! 38 bytes minimum of Mod, we are not reaching that.
+    //! Make a basic "set" function for Keys, set them to default values in function.
+    //! 4096 bit modulus preferrred (4096-bit rsa)
+    ErrorCode TempError = rsa_oaep_enc(Plaintext, sizeof(Plaintext), IV, PubKey, MD5Param, &RetArr);
+
+
+    // 0 = success
+    // 1 = unknown
+    // 2 = malloc
+    // 3 = length
+    printf("Error: %d\n", TempError);
     
     return 0;
 }
