@@ -114,10 +114,10 @@ ErrorCode rsa_oaep_enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* IV
     //? Plan: Allocate EM, then use memory trickery to affect only parts of it.
     //? Size: 1+MaskedSeed+MaskedDB (1) + (Hash.Size) + (ModSize-HashFunc.Size-1) == ModSize
     //! This seems to cancel out everything other than ModSize
-    uint8_t* EncodedMessage = malloc(ModSize+1); //! +1 unnecessary unless for check at end (make sure no overflow)
+    uint8_t* EncodedMessage = calloc(ModSize+1, 1); //! +1 unnecessary unless for check at end (make sure no overflow)
     if (EncodedMessage == NULL)
         return malloc_error;
-    EncodedMessage[0] = 0;
+    //EncodedMessage[0] = 0;
     EncodedMessage[ModSize] = 234;  //! Remove this and +1
 
     //? Datablock (DB)
@@ -129,8 +129,10 @@ ErrorCode rsa_oaep_enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* IV
     EMPos+=HashFunc.Size;
 
     //* Zero Padding PS (EMPos serves as an offset and must be accounted for)
-    for (size_t Temp = EMPos; EMPos < (Temp+(ModSize - PSize -(2*HashFunc.Size) - 2)); EMPos++)
-        EncodedMessage[EMPos] = 0;
+    //for (size_t Temp = EMPos; EMPos < (Temp+(ModSize - PSize -(2*HashFunc.Size) - 2)); EMPos++)
+        //EncodedMessage[EMPos] = 0;
+    //* PS zero padding (EncodedMessage is initialized to 0)
+    EMPos+=Modsize-PSize-(2*HashFunc.Size)-2;
 
     //* 0x01
     EncodedMessage[EMPos++] = 1;
