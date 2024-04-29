@@ -105,6 +105,7 @@ ErrorCode rsa_oaep_enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* IV
 
     //* Size of PubKey.Mod in bytes
     size_t ModSize = (mpz_sizeinbase(PubKey.Mod, 2) + 7) >> 3;
+    printf("ModSize: %d\n", ModSize);
 
     //* Length check: Either PSize is too big, or calculation is negative.
     if (PSize > (size_t) ((ModSize)-(2*HashFunc.Size) - 2) || (ptrdiff_t) ((ModSize)-(2*HashFunc.Size) - 2) < 0)
@@ -113,29 +114,59 @@ ErrorCode rsa_oaep_enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* IV
     //? Plan: Allocate EM, then use memory trickery to affect only parts of it.
     //? Size: 1+MaskedSeed+MaskedDB (1) + (Hash.Size) + (ModSize-HashFunc.Size-1) == ModSize
     //! This seems to cancel out everything other than ModSize
-    uint8_t* EncodedMessage = malloc(ModSize+1); // +1 unnecessary unless for check at end (make sure no overflow)
+    uint8_t* EncodedMessage = malloc(ModSize+1); //! +1 unnecessary unless for check at end (make sure no overflow)
+    if (EncodedMessage == NULL)
+        return malloc_error;
     EncodedMessage[0] = 0;
-    EncodedMessage[ModSize] = 234;
+    EncodedMessage[ModSize] = 234;  //! Remove this and +1
 
-    //* maskedDB
+    //? Datablock (DB)
     // Start at maskedDB
-    size_t EMPos = HashFunc.Size+1;
+    size_t EMPos = 1+HashFunc.Size;
 
-    // lHash (empty)
+    //* lHash (empty)
     HashFunc.Func(NULL, 0, EncodedMessage+EMPos);
+    EMPos+=HashFunc.Size;
 
-    // Zero Padding PS (EMPos serves as an offset and must be accounted for)
-    for (EMPos; EMPos < EMPos+(ModSize - PSize -(2*HashFunc.Size) - 2); EMPos++)
+    //* Zero Padding PS (EMPos serves as an offset and must be accounted for)
+    for (size_t Temp = EMPos; EMPos < (Temp+(ModSize - PSize -(2*HashFunc.Size) - 2)); EMPos++)
         EncodedMessage[EMPos] = 0;
 
-    // 0x01
+    //* 0x01
     EncodedMessage[EMPos++] = 1;
 
-    // Message
+    //* Message
     for (size_t i = 0; i < PSize; i++)
         EncodedMessage[EMPos++] = Plaintext[i];
 
-    printf("test %d\n", EncodedMessage[ModSize]);
+    //* DBMask
+    uint8_t* DBMask = malloc(ModSize-HashFunc.Size-1);
+    if (DBMask == NULL)
+        return malloc_error;
+    rsa_mgf1(IV, HashFunc.Size, ModSize-HashFunc.Size-1, HashFunc, DBMask);
+
+    size_t DBMaskSize = 0;
+    for (EMPos = HashFunc.Size+1; EMPos < ModSize; EMPos++)
+        EncodedMessage[EMPos] ^= DBMask[DBMaskSize++];
+    free(DBMask);
+
+
+    //? SeedMask
+
+    uint8_t* SeedMask = malloc(HashFunc.Size);
+    if (SeedMask == NULL)
+        return malloc_error;
+    rsa_mgf1(HashFunc.Size+1, DBMaskSize, HashFunc.Size, HashFunc, SeedMask);
+
+
+
+
+
+
+
+
+    for (size_t i = 0; i < ModSize+1; i++)
+        printf("test %d\n", EncodedMessage[i]);
 
 
 
@@ -253,6 +284,7 @@ static ErrorCode rsa_mgf1(const uint8_t* Seed, size_t SeedSize, size_t RetSize, 
     }
 
     // Fill SeedTemp data from Seed
+    printf("Test %d\n", SeedSize+4);
     for (size_t i = 0; i < SeedSize; i++)
         SeedTemp[i] = Seed[i];
 

@@ -72,11 +72,11 @@ int main()
     //* Variables are all PascalCase (they look neat)
 
     //? Playground
-    uint8_t Plaintext[] = {1,2,3,4};
+    uint8_t Plaintext[] = {1,2,3,4, 5};
     uint8_t IV[16] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
     RSAKey PubKey;
     mpz_init_set_ui(PubKey.Exp, 123);
-    mpz_init_set_ui(PubKey.Mod, 321);
+    mpz_init_set_str(PubKey.Mod, "9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999", 32);
     ByteArr RetArr;
 
     //! PubKey.Mod is too small for the function to perform properly.
