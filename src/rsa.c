@@ -117,7 +117,6 @@ ErrorCode rsa_oaep_enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* IV
     uint8_t* EncodedMessage = calloc(ModSize+1, 1); //! +1 unnecessary unless for check at end (make sure no overflow)
     if (EncodedMessage == NULL)
         return malloc_error;
-    //EncodedMessage[0] = 0;
     EncodedMessage[ModSize] = 234;  //! Remove this and +1
 
     //? Datablock (DB)
@@ -132,7 +131,7 @@ ErrorCode rsa_oaep_enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* IV
     //for (size_t Temp = EMPos; EMPos < (Temp+(ModSize - PSize -(2*HashFunc.Size) - 2)); EMPos++)
         //EncodedMessage[EMPos] = 0;
     //* PS zero padding (EncodedMessage is initialized to 0)
-    EMPos+=Modsize-PSize-(2*HashFunc.Size)-2;
+    EMPos+=ModSize-PSize-(2*HashFunc.Size)-2;
 
     //* 0x01
     EncodedMessage[EMPos++] = 1;
@@ -144,7 +143,10 @@ ErrorCode rsa_oaep_enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* IV
     //* DBMask
     uint8_t* DBMask = malloc(ModSize-HashFunc.Size-1);
     if (DBMask == NULL)
+    {
+        free(EncodedMessage);
         return malloc_error;
+    }
     rsa_mgf1(IV, HashFunc.Size, ModSize-HashFunc.Size-1, HashFunc, DBMask);
 
     size_t DBMaskSize = 0;
@@ -157,71 +159,24 @@ ErrorCode rsa_oaep_enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* IV
 
     uint8_t* SeedMask = malloc(HashFunc.Size);
     if (SeedMask == NULL)
+    {
+        free(EncodedMessage);
         return malloc_error;
-    rsa_mgf1(HashFunc.Size+1, DBMaskSize, HashFunc.Size, HashFunc, SeedMask);
+    }
+    // Start at DB start (Seed+1), Size = Entire DB block, Return mask
+    rsa_mgf1(EncodedMessage+HashFunc.Size+1, DBMaskSize, HashFunc.Size, HashFunc, SeedMask);
 
+    for (size_t i = 0; i < HashFunc.Size; i++)
+        EncodedMessage[1+i] = IV[i] ^ SeedMask[i];
+    free(SeedMask);
 
+    mpz_t EncodedNum;
+    rsa_encode(EncodedMessage, ModSize, EncodedNum);
+    rsa_encrypt(EncodedNum, PubKey);
+    rsa_decode(EncodedNum, RetArr);
+    free(EncodedMessage);
 
-
-
-
-
-
-    for (size_t i = 0; i < ModSize+1; i++)
-        printf("test %d\n", EncodedMessage[i]);
-
-
-
-    //* maskedSeed (Needs maskedDB)
-
-    
-
-    // //* d41d8cd98f00b204e9800998ecf8427e 
-    // //! LHash must equal this hexadecimal (with md5)
-    // //! Either NULL,0 or {'\0'}, 1 as the input
-    // //* Set the first HashFunc.HashSize bytes to LHash
-    // HashFunc.Func(NULL, 0, LHash);
-    
-    // //* Set the next variable (down to 0) bytes to 0
-    // size_t i;
-    // for (i = HashFunc.Size; i < ModSize - PSize - (2*HashFunc.Size) - 2 + HashFunc.Size; i++)
-    //     DB[i] = 0;
-
-    // //* Set the direct next byte to 0x01
-    // DB[i++] = 0x01;
-    
-    // //* Set the last PSize bytes to Plaintext
-    // for (size_t j = 0; i < HashFunc.Size + ModSize - PSize - (2*HashFunc.Size) - 2 + 1 + PSize; i++)
-    //     DB[i] = Plaintext[j++];
-
-    // uint8_t* DBMask = malloc(ModSize-HashFunc.Size-1);
-    // rsa_mgf1(IV, HashFunc.Size, ModSize-HashFunc.Size-1, HashFunc, DBMask);
-
-    // for (size_t i = 0; i < ModSize - HashFunc.Size - 1; i++)
-    //     DB[i] ^= DBMask[i];
-
-    // uint8_t* SeedMask = malloc(HashFunc.Size);
-    // rsa_mgf1(DB, ModSize - HashFunc.Size - 1, HashFunc.Size, HashFunc, SeedMask);
-
-    // for (size_t i = 0; i < HashFunc.Size; i++)
-    //     SeedMask[i] ^= Seed[i];
-
-    // //! All previous is untested and is only example
-    // // EM = 0x00 || SeedMask || DBMask
-
-    // // rsa_encode EM
-    // // rsa_encrypt define EM
-    // // rsa_decode EM
-    // // return EM decoded
-
-
-    // // DB = LHash || PS || 0x01 || Plaintext
-    // // IV is size HashFunc.HashSize, used in future.
-    // //! Masks start here (incomplete)
-
-    
-
-
+    //! Testing needed, should work
     return success;
 }
 
@@ -286,7 +241,6 @@ static ErrorCode rsa_mgf1(const uint8_t* Seed, size_t SeedSize, size_t RetSize, 
     }
 
     // Fill SeedTemp data from Seed
-    printf("Test %d\n", SeedSize+4);
     for (size_t i = 0; i < SeedSize; i++)
         SeedTemp[i] = Seed[i];
 
