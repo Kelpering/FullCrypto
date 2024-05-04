@@ -91,7 +91,89 @@
 
 //^ Priority: 2
 // Generate a keypair for rsa enc, dec, sign.
-ErrorCode rsa_generate_keypair();
+ErrorCode rsa_generate_keypair(size_t BitSize, RSAKey* Public, RSAKey* Private)
+{
+    //? Setup
+    // Set Public exponent to be 65537 (for convenience & security)
+    mpz_init_set_ui(Public->Exp, 65537);
+    mpz_init(Public->Mod);
+    mpz_init(Private->Exp);
+    mpz_init(Private->Mod);
+
+    // Initialize gmp random functions
+    gmp_randstate_t RandState;
+    gmp_randinit_mt(RandState);
+    mpz_t SeedNum;
+    //! FIGURE THIS SEED OUT, HOW ARE WE DOING IT?
+    mpz_import(SeedNum, DEFAULT, 1, 1, 1, 0, IV);
+    gmp_randseed(RandState, SeedNum);
+    // Initialize Temporary variables.
+    mpz_t P, Q, Temp;
+    mpz_init(P);
+    mpz_init(Q);
+    mpz_init(Temp);
+
+    //? Generate Primes
+    while (1)
+    {
+        //? Generate P
+        while (1)
+        {
+            mpz_urandomb(P, RandState, BitSize/2);
+            mpz_setbit(P, BitSize/2 - 1);
+            mpz_setbit(P, BitSize/2 - 1);
+            mpz_nextprime(P, P);
+
+            // Retry if P mod E == 1
+            mpz_mod(Temp, P, Public->Exp);
+            if (mpz_cmp_ui(Temp, 1) == 0)
+                continue;
+            else
+                break;
+        }
+
+        //? Generate Q
+        while (1)
+        {
+            mpz_urandomb(Q, RandState, BitSize/2);
+            mpz_setbit(Q, BitSize/2 - 1);
+            mpz_setbit(Q, BitSize/2 - 1);
+            mpz_nextprime(Q, Q);
+
+            // Retry if P mod E == 1
+            mpz_mod(Temp, Q, Public->Exp);
+            if (mpz_cmp_ui(Temp, 1) == 0)
+                continue;
+            else
+                break;
+        }
+
+        // If P == Q, restart
+        if (mpz_cmp(P, Q) == 0)
+            continue;
+        break;
+    }
+    gmp_randclear(RandState);
+    // P & Q are verified primes at this point
+
+    //? Generate D and N (Private exponent and modulus)
+    // Generate Modulus (P*Q)
+    mpz_mul(Public->Mod, P, Q);
+    mpz_set(Private->Mod, Public->Mod);
+
+    // Temp here is now the totient of N (p-1 * q-1)
+    mpz_sub_ui(P, P, 1);
+    mpz_sub_ui(Q, Q, 1);
+    mpz_mul(Temp, P, Q);
+
+    mpz_invert(Private->Exp, Public->Exp, Temp);
+
+    // Clear allocated memory (GMP)
+    mpz_clear(P);
+    mpz_clear(Q);
+    mpz_clear(Temp);
+    return success;
+}
 
 //^ Priority: 1
 //! Use RSA_Encrypt for testing purposes
@@ -165,16 +247,90 @@ ErrorCode rsa_oaep_enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* IV
     //? RSA
     // Encrypt EncodedMessage with RSA. Save result into RetArr (allocated here)
     rsa_raw(EncodedMessage, ModSize, PubKey, RetArr);
+    for (size_t i = 0; i < ModSize; i++)
+        printf("%.2x", EncodedMessage[i]);
+    printf("\n\n\n");
     free(EncodedMessage);
 
     //! Testing needed, should work
     return success;
 }
 
-//^ Priority: 1
-//! Use RSA_Encrypt for testing purposes
-// decrypt Ciphertext -> Plaintext with RSA-OAEP
-ErrorCode rsa_oaep_dec();
+ErrorCode rsa_oaep_dec(const uint8_t* Ciphertext, size_t CSize, const RSAKey PrivKey, const HashParam HashFunc, ByteArr* RetArr)
+{
+    //? Length checking and setup
+    // Size of PrivKey.Mod in bytes (k in RFC)
+    size_t ModSize = (mpz_sizeinbase(PrivKey.Mod, 2) + 7) >> 3;
+    printf("ModSize: %ld\n", ModSize);
+
+    // Length Check: Either CSize does not match ModSize, or ModSize is too small.
+    if (CSize != ModSize || ModSize < (2*HashFunc.Size) + 2)
+        return length_error;
+    
+    //? RSA decrypt and basic checks
+    ByteArr EncodedMessage;
+    rsa_raw(Ciphertext, CSize, PrivKey, &EncodedMessage);
+
+    // Check first byte to be 0, if not, exit.
+    if (EncodedMessage.Arr[0] != 0x00)
+    {
+        printf("FIRST CHECK\n");
+        free(EncodedMessage.Arr);
+        return unknown_error;
+    }
+
+    //? SeedBlock recovery
+    // Generate a mask for the the SeedBlock in EncodedMessage
+    uint8_t* SeedMask = malloc(HashFunc.Size);
+    if (SeedMask == NULL)
+    {
+        free(EncodedMessage.Arr);
+        return malloc_error;
+    }
+    // mgf1 takes data from the entirety of the Masked DB in EncodedMessage.
+    rsa_mgf1(EncodedMessage.Arr+HashFunc.Size+1, EncodedMessage.Size-HashFunc.Size-1, HashFunc.Size, HashFunc, SeedMask);
+
+    // Xor SeedMask with the Seed in EncodedMessage. Use for further Seed requirements.
+    for (size_t i = 0; i < HashFunc.Size; i++)
+        EncodedMessage.Arr[1+i] = EncodedMessage.Arr[i] ^ SeedMask[i];
+    free(SeedMask);
+
+    //? Data Block recovery (DB)
+    // lHash (label Hash) which is a null byte string of size 0.
+    uint8_t* lHash = malloc(HashFunc.Size);
+    HashFunc.Func(NULL, 0, lHash);
+
+    // Check generated lHash against message lHash
+    for (size_t i = 0; i < HashFunc.Size; i++)
+        if (lHash[i] != EncodedMessage.Arr[i+1])
+        {
+            free(lHash);
+            free(EncodedMessage.Arr);
+            return unknown_error;
+        }
+    free(lHash);
+
+    // Finds end of Zero Padding (PS) section. If the PS ends with a byte other than 0x01, return error.
+    size_t PSEnd;
+    for (PSEnd = 1+(2*HashFunc.Size); PSEnd < EncodedMessage.Size; PSEnd++)
+        if (EncodedMessage.Arr[PSEnd] != 0 && EncodedMessage.Arr[PSEnd] != 1)
+        {
+            free(EncodedMessage.Arr);
+            return unknown_error;
+        }
+        else if (EncodedMessage.Arr[PSEnd] == 1)
+            break;
+    PSEnd++;
+
+    // Allocates RetArr and sets it equal to the decrypted message.
+    RetArr->Size = ModSize-PSEnd;
+    RetArr->Arr = malloc(RetArr->Size);
+    for (size_t i = 0, j = PSEnd; j < ModSize; i++,j++)
+        RetArr->Arr[i] = EncodedMessage.Arr[j];
+    free(EncodedMessage.Arr);
+
+    return success;
+}
 
 //^ Priority: 3
 // Sign Text and return Tag (Tag == Hash of Text + Encrypted with Private)

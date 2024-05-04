@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <gmp.h>
 #include "../include/bytearr.h"
 #include "../include/error.h"
 #include "../include/aes.h"
@@ -75,19 +76,26 @@ int main()
     uint8_t Plaintext[] = {1,2,3,4,5};
     uint8_t IV[16] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
     RSAKey PubKey;
-    mpz_init_set_ui(PubKey.Exp, 123);
-    mpz_init_set_str(PubKey.Mod, "999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999", 32);
+    RSAKey PrivKey;
     ByteArr RetArr;
+    ByteArr NewArr;
+    ErrorCode TempError;
 
-    //! rsa_oaep_enc seems legit. Should work with any modulus (key) size.
-    ErrorCode TempError = rsa_oaep_enc(Plaintext, sizeof(Plaintext), IV, PubKey, MD5Param, &RetArr);
+    rsa_generate_keypair(1024, &PubKey, &PrivKey);
 
-    //? Print RetArr (encrypted) message
+    TempError = rsa_oaep_enc(Plaintext, sizeof(Plaintext), IV, PubKey, MD5Param, &RetArr);
+
+    // //? Print RetArr (encrypted) message
     for (size_t i = 0; i < RetArr.Size; i++)
         printf("%.2x", RetArr.Arr[i]);
     printf("\n");
 
-    //* rsa_oaep_dec (requires KeyGen first)
+    TempError = rsa_oaep_dec(RetArr.Arr, RetArr.Size, PrivKey, MD5Param, &NewArr);
+
+    // //? Print RetArr (encrypted) message
+    // for (size_t i = 0; i < NewArr.Size; i++)
+        // printf("%.2x", NewArr.Arr[i]);
+    // printf("\n");
 
 
     // 0 = success
@@ -97,7 +105,10 @@ int main()
     printf("Error: %d\n", TempError);
     mpz_clear(PubKey.Exp);
     mpz_clear(PubKey.Mod);
+    mpz_clear(PrivKey.Exp);
+    mpz_clear(PrivKey.Mod);
     free(RetArr.Arr);
+    // free(NewArr.Arr);
     
     return 0;
 }
