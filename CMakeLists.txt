@@ -8,7 +8,7 @@ file (GLOB SOURCES "src/*.c")
 add_executable(FullCrypto ${SOURCES})
 
 target_compile_options(FullCrypto PRIVATE
-    -Wall -Wextra -Wpedantic
+    -Wall -Wextra -Wpedantic -g3 -O0
 )
 
 target_link_libraries(FullCrypto gmp)

@@ -72,26 +72,32 @@ int main()
     //* Variables are all PascalCase (they look neat)
 
     //? Playground
-    uint8_t Plaintext[] = {1,2,3,4, 5};
+    uint8_t Plaintext[] = {1,2,3,4,5};
     uint8_t IV[16] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
     RSAKey PubKey;
     mpz_init_set_ui(PubKey.Exp, 123);
-    mpz_init_set_str(PubKey.Mod, "9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999", 32);
+    mpz_init_set_str(PubKey.Mod, "999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999", 32);
     ByteArr RetArr;
 
-    //! PubKey.Mod is too small for the function to perform properly.
-    //! Here, 34 bytes minimum + 1 for each byte of plaintext desired.
-    //! 38 bytes minimum of Mod, we are not reaching that.
-    //! Make a basic "set" function for Keys, set them to default values in function.
-    //! 4096 bit modulus preferrred (4096-bit rsa)
+    //! rsa_oaep_enc seems legit. Should work with any modulus (key) size.
     ErrorCode TempError = rsa_oaep_enc(Plaintext, sizeof(Plaintext), IV, PubKey, MD5Param, &RetArr);
+
+    //? Print RetArr (encrypted) message
+    for (size_t i = 0; i < RetArr.Size; i++)
+        printf("%.2x", RetArr.Arr[i]);
+    printf("\n");
+
+    //* rsa_oaep_dec (requires KeyGen first)
 
 
     // 0 = success
     // 1 = unknown
     // 2 = malloc
-    // 3 = length
+    // 3 = lengt
     printf("Error: %d\n", TempError);
+    mpz_clear(PubKey.Exp);
+    mpz_clear(PubKey.Mod);
+    free(RetArr.Arr);
     
     return 0;
 }
