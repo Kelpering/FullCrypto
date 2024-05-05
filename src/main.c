@@ -73,42 +73,30 @@ int main()
     //* Variables are all PascalCase (they look neat)
 
     //? Playground
-    uint8_t Plaintext[] = {1,2,3,4,5};
-    uint8_t IV[16] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
-    RSAKey PubKey;
-    RSAKey PrivKey;
-    ByteArr RetArr;
-    ByteArr NewArr;
-    ErrorCode TempError;
+    uint8_t Plaintext[] = "Hello World";
+    uint8_t* IV = aes_generate_iv(time(NULL), 16);
+    RSAKey PubKey, PrivKey;
+    ByteArr Ciphertext, NewText;
 
-    rsa_generate_keypair(1024, &PubKey, &PrivKey);
+    //! Seeding (by MY function args) is insecure. Make into array of seed data (unlimited in theory), and I can call this func done.
+    //^ PubKey and PrivKey are both mpz_t. To store, I might want to bring back the rsa encode/decode functions.
+    rsa_generate_keypair(1024, time(NULL), &PubKey, &PrivKey);
+    gmp_printf("\nPUBLIC EXP: %Zd\n\nPRIVATE EXP: %Zd\n\nSHARED MOD: %Zd\n", PubKey.Exp, PrivKey.Exp, PubKey.Mod);
 
-    TempError = rsa_oaep_enc(Plaintext, sizeof(Plaintext), IV, PubKey, MD5Param, &RetArr);
+    PrintInfo(Plaintext, sizeof(Plaintext), true);
 
-    // //? Print RetArr (encrypted) message
-    for (size_t i = 0; i < RetArr.Size; i++)
-        printf("%.2x", RetArr.Arr[i]);
-    printf("\n");
+    //! I am unsure if the hash function will actually work for other hash sizes.
+    rsa_oaep_enc(Plaintext, sizeof(Plaintext), IV, PubKey, MD5Param, &Ciphertext);
+    PrintInfo(Ciphertext.Arr, Ciphertext.Size, false);
 
-    TempError = rsa_oaep_dec(RetArr.Arr, RetArr.Size, PrivKey, MD5Param, &NewArr);
-
-    // //? Print RetArr (encrypted) message
-    // for (size_t i = 0; i < NewArr.Size; i++)
-        // printf("%.2x", NewArr.Arr[i]);
-    // printf("\n");
+    rsa_oaep_dec(Ciphertext.Arr, Ciphertext.Size, PrivKey, MD5Param, &NewText);
+    PrintInfo(NewText.Arr, NewText.Size, true);
 
 
-    // 0 = success
-    // 1 = unknown
-    // 2 = malloc
-    // 3 = lengt
-    printf("Error: %d\n", TempError);
-    mpz_clear(PubKey.Exp);
-    mpz_clear(PubKey.Mod);
-    mpz_clear(PrivKey.Exp);
-    mpz_clear(PrivKey.Mod);
-    free(RetArr.Arr);
-    // free(NewArr.Arr);
+    rsa_destroy_key(PubKey);
+    rsa_destroy_key(PrivKey);
+    free(Ciphertext.Arr);
+    free(NewText.Arr);
     
     return 0;
 }
@@ -126,29 +114,5 @@ void PrintInfo(uint8_t* Array, size_t Size, bool isString)
             printf("%.2x", Array[i]);
     }
     printf("\n");
-    return;
-}
-
-//! Awful code used only for testing, probably leaks and destroys memory OoB, use in seperate runs exclusively for converting to hex strings.
-void StrToHex(char *Str)
-{
-    size_t Count = 0;
-    while (Str[Count++] != '\0');
-
-    char *HexStr = malloc((Count<<1) + Count - 2);
-
-    for (size_t i = 0, j=0; i < Count-2; i+=2, j+=6)
-    {
-        HexStr[j+0] = '0';
-        HexStr[j+1] = 'x';
-        HexStr[j+2] = Str[i];
-        HexStr[j+3] = Str[i+1];
-        HexStr[j+4] = ',';
-        HexStr[j+5] = ' ';
-    }
-    HexStr[(Count<<1) + Count - 3] = '\0';
-    printf("%s\n", HexStr);
-    free(HexStr);
-
     return;
 }

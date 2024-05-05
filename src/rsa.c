@@ -91,7 +91,7 @@
 
 //^ Priority: 2
 // Generate a keypair for rsa enc, dec, sign.
-ErrorCode rsa_generate_keypair(size_t BitSize, RSAKey* Public, RSAKey* Private)
+ErrorCode rsa_generate_keypair(size_t BitSize, uint64_t Seed, RSAKey* Public, RSAKey* Private)
 {
     //? Setup
     // Set Public exponent to be 65537 (for convenience & security)
@@ -104,9 +104,9 @@ ErrorCode rsa_generate_keypair(size_t BitSize, RSAKey* Public, RSAKey* Private)
     gmp_randstate_t RandState;
     gmp_randinit_mt(RandState);
     mpz_t SeedNum;
-    //! FIGURE THIS SEED OUT, HOW ARE WE DOING IT?
-    mpz_import(SeedNum, DEFAULT, 1, 1, 1, 0, IV);
+    mpz_init_set_ui(SeedNum, Seed);
     gmp_randseed(RandState, SeedNum);
+
     // Initialize Temporary variables.
     mpz_t P, Q, Temp;
     mpz_init(P);
@@ -175,6 +175,14 @@ ErrorCode rsa_generate_keypair(size_t BitSize, RSAKey* Public, RSAKey* Private)
     return success;
 }
 
+void rsa_destroy_key(RSAKey Key)
+{
+    mpz_clear(Key.Exp);
+    mpz_clear(Key.Mod);
+    
+    return;
+}
+
 //^ Priority: 1
 //! Use RSA_Encrypt for testing purposes
 // encrypt Plaintext -> Ciphertext with RSA-OAEP
@@ -182,8 +190,8 @@ ErrorCode rsa_oaep_enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* IV
 {
     //? Length checking and setup
     // Size of PubKey.Mod in bytes (k in RFC)
+    ErrorCode TempError;
     size_t ModSize = (mpz_sizeinbase(PubKey.Mod, 2) + 7) >> 3;
-    printf("ModSize: %ld\n", ModSize);
 
     // Length Check: Either PSize is too large, or the equation is negative (edge case)
     if (PSize > (size_t) ((ModSize)-(2*HashFunc.Size) - 2) || (ptrdiff_t) ((ModSize)-(2*HashFunc.Size) - 2) < 0)
@@ -200,7 +208,12 @@ ErrorCode rsa_oaep_enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* IV
     size_t EMPos = 1+HashFunc.Size;
 
     // lHash (Label is not provided, so it is always an empty byte string of size 0)
-    HashFunc.Func(NULL, 0, EncodedMessage+EMPos);
+    TempError = HashFunc.Func(NULL, 0, EncodedMessage+EMPos);
+    if (TempError != success)
+    {
+        free(EncodedMessage);
+        return TempError;
+    }
     EMPos+=HashFunc.Size;
 
     // Zero Padding (Since we use calloc, there is no need to set bytes here.)
@@ -220,7 +233,12 @@ ErrorCode rsa_oaep_enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* IV
         free(EncodedMessage);
         return malloc_error;
     }
-    rsa_mgf1(IV, HashFunc.Size, ModSize-HashFunc.Size-1, HashFunc, DBMask);
+    TempError = rsa_mgf1(IV, HashFunc.Size, ModSize-HashFunc.Size-1, HashFunc, DBMask);
+    if (TempError != success)
+    {
+        free(EncodedMessage);
+        return TempError;
+    }
 
     // Xor DBMask with the DB section of EncodedMessage
     size_t DBMaskSize = 0;
@@ -237,7 +255,12 @@ ErrorCode rsa_oaep_enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* IV
         return malloc_error;
     }
     // mgf1 takes data from the entirety of the Masked DB in EncodedMessage.
-    rsa_mgf1(EncodedMessage+HashFunc.Size+1, DBMaskSize, HashFunc.Size, HashFunc, SeedMask);
+    TempError = rsa_mgf1(EncodedMessage+HashFunc.Size+1, DBMaskSize, HashFunc.Size, HashFunc, SeedMask);
+    if (TempError != success)
+    {
+        free(EncodedMessage);
+        return TempError;
+    }
 
     // Xor SeedMask with the Seed, save result in corresponding SeedBlock in EncodedMessage
     for (size_t i = 0; i < HashFunc.Size; i++)
@@ -246,38 +269,48 @@ ErrorCode rsa_oaep_enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* IV
 
     //? RSA
     // Encrypt EncodedMessage with RSA. Save result into RetArr (allocated here)
-    rsa_raw(EncodedMessage, ModSize, PubKey, RetArr);
-    for (size_t i = 0; i < ModSize; i++)
-        printf("%.2x", EncodedMessage[i]);
-    printf("\n\n\n");
+    TempError = rsa_raw(EncodedMessage, ModSize, PubKey, RetArr);
     free(EncodedMessage);
 
-    //! Testing needed, should work
-    return success;
+    if (TempError != success)
+        free(RetArr->Arr);
+    return TempError;
 }
 
 ErrorCode rsa_oaep_dec(const uint8_t* Ciphertext, size_t CSize, const RSAKey PrivKey, const HashParam HashFunc, ByteArr* RetArr)
 {
     //? Length checking and setup
     // Size of PrivKey.Mod in bytes (k in RFC)
+    ErrorCode TempError;
     size_t ModSize = (mpz_sizeinbase(PrivKey.Mod, 2) + 7) >> 3;
-    printf("ModSize: %ld\n", ModSize);
 
     // Length Check: Either CSize does not match ModSize, or ModSize is too small.
     if (CSize != ModSize || ModSize < (2*HashFunc.Size) + 2)
         return length_error;
     
     //? RSA decrypt and basic checks
-    ByteArr EncodedMessage;
-    rsa_raw(Ciphertext, CSize, PrivKey, &EncodedMessage);
-
-    // Check first byte to be 0, if not, exit.
-    if (EncodedMessage.Arr[0] != 0x00)
+    // mpz does not save the leading 0x00, so we add this in a new ByteArr
+    ByteArr Temp;
+    TempError = rsa_raw(Ciphertext, CSize, PrivKey, &Temp);
+    if (TempError != success)
     {
-        printf("FIRST CHECK\n");
-        free(EncodedMessage.Arr);
-        return unknown_error;
+        free(Temp.Arr);
+        return TempError;
     }
+    ByteArr EncodedMessage;
+    EncodedMessage.Size = Temp.Size+1;
+    EncodedMessage.Arr = malloc(EncodedMessage.Size);
+    if (EncodedMessage.Arr == NULL)
+    {
+        free(Temp.Arr);
+        return malloc_error;
+    }
+
+    // Accounts for missing 0
+    for(size_t i = 0; i < Temp.Size; i++)
+        EncodedMessage.Arr[i+1] = Temp.Arr[i];
+    EncodedMessage.Arr[0] = 0x00;
+    free(Temp.Arr);
 
     //? SeedBlock recovery
     // Generate a mask for the the SeedBlock in EncodedMessage
@@ -288,21 +321,54 @@ ErrorCode rsa_oaep_dec(const uint8_t* Ciphertext, size_t CSize, const RSAKey Pri
         return malloc_error;
     }
     // mgf1 takes data from the entirety of the Masked DB in EncodedMessage.
-    rsa_mgf1(EncodedMessage.Arr+HashFunc.Size+1, EncodedMessage.Size-HashFunc.Size-1, HashFunc.Size, HashFunc, SeedMask);
+    TempError = rsa_mgf1(EncodedMessage.Arr+HashFunc.Size+1, EncodedMessage.Size-HashFunc.Size-1, HashFunc.Size, HashFunc, SeedMask);
+    if (TempError != success)
+    {
+        free(SeedMask);
+        free(EncodedMessage.Arr);
+        return TempError;
+    }
 
     // Xor SeedMask with the Seed in EncodedMessage. Use for further Seed requirements.
     for (size_t i = 0; i < HashFunc.Size; i++)
-        EncodedMessage.Arr[1+i] = EncodedMessage.Arr[i] ^ SeedMask[i];
+        EncodedMessage.Arr[i+1] ^= SeedMask[i];
     free(SeedMask);
 
     //? Data Block recovery (DB)
-    // lHash (label Hash) which is a null byte string of size 0.
+    // Generate a mask for the DataBlock in EncodedMessage
+    uint8_t* DBMask = malloc(EncodedMessage.Size-HashFunc.Size-1);
+    if (DBMask == NULL)
+    {
+        free(EncodedMessage.Arr);
+        return malloc_error;
+    }
+    // mgf1 takes data from the SeedBlock that was just unmasked in the previous step
+    TempError = rsa_mgf1(EncodedMessage.Arr+1, HashFunc.Size, EncodedMessage.Size-HashFunc.Size-1, HashFunc, DBMask);
+    if (TempError != success)
+    {
+        free(DBMask);
+        free(EncodedMessage.Arr);
+        return TempError;
+    }
+
+    // Xor DBMask with the Data Block in EncodedMessage. Use as plaintext Data Block
+    for (size_t i = 0; i < EncodedMessage.Size-HashFunc.Size-1; i++)
+        EncodedMessage.Arr[i+HashFunc.Size+1] ^= DBMask[i];
+    free(DBMask);
+
+    // lHash (label Hash) which is a null byte string of size 0 hashed with HashFunc.
     uint8_t* lHash = malloc(HashFunc.Size);
-    HashFunc.Func(NULL, 0, lHash);
+    TempError = HashFunc.Func(NULL, 0, lHash);
+    if (TempError != success)
+    {
+        free(lHash);
+        free(EncodedMessage.Arr);
+        return TempError;
+    }
 
     // Check generated lHash against message lHash
     for (size_t i = 0; i < HashFunc.Size; i++)
-        if (lHash[i] != EncodedMessage.Arr[i+1])
+        if (lHash[i] != EncodedMessage.Arr[i+HashFunc.Size+1])
         {
             free(lHash);
             free(EncodedMessage.Arr);
@@ -325,6 +391,11 @@ ErrorCode rsa_oaep_dec(const uint8_t* Ciphertext, size_t CSize, const RSAKey Pri
     // Allocates RetArr and sets it equal to the decrypted message.
     RetArr->Size = ModSize-PSEnd;
     RetArr->Arr = malloc(RetArr->Size);
+    if (RetArr->Arr == NULL)
+    {
+        free(EncodedMessage.Arr);
+        return malloc_error;
+    }
     for (size_t i = 0, j = PSEnd; j < ModSize; i++,j++)
         RetArr->Arr[i] = EncodedMessage.Arr[j];
     free(EncodedMessage.Arr);
@@ -350,7 +421,7 @@ ErrorCode rsa_verify();
 //? Private functions
 
 // Add note: raw rsa encryption and decryption are identical but with different keys
-static ErrorCode rsa_raw(uint8_t* Arr, size_t Size, RSAKey Key, ByteArr* RetArr)
+ErrorCode rsa_raw(uint8_t* Arr, size_t Size, RSAKey Key, ByteArr* RetArr)
 {
     // Imports Arr into EncodedNum (as a number representation)
     mpz_t EncodedNum;
@@ -365,6 +436,7 @@ static ErrorCode rsa_raw(uint8_t* Arr, size_t Size, RSAKey Key, ByteArr* RetArr)
     if (RetArr->Arr == NULL)
         return malloc_error;
     mpz_clear(EncodedNum);
+
     return success;
 }
 

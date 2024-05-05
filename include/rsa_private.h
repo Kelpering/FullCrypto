@@ -19,7 +19,7 @@
 // // Description needed
 // static ErrorCode rsa_decode(mpz_t Num, ByteArr* RetArr);
 
-static ErrorCode rsa_raw(uint8_t* Arr, size_t Size, RSAKey Key, ByteArr* RetArr);
+
 
 // Description needed
 static ErrorCode rsa_mgf1(const uint8_t* Seed, size_t SeedSize, size_t RetSize, const HashParam HashFunc, uint8_t* RetArr);
