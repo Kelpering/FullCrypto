@@ -6,8 +6,8 @@
 //* encode/decode
 //* encrypt/decrypt (raw, macro)
 //* mgf_1
-//^ oaep pass (mpz_t)
-//^ encrypt/decrypt (oaep, Text*)
+//* oaep pass (mpz_t)
+//* encrypt/decrypt (oaep, Text*)
 //^ sign/verify
 
 
