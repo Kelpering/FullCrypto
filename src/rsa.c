@@ -406,7 +406,14 @@ ErrorCode rsa_oaep_dec(const uint8_t* Ciphertext, size_t CSize, const RSAKey Pri
 //^ Priority: 3
 // Sign Text and return Tag (Tag == Hash of Text + Encrypted with Private)
 //! Might be subject to change
-ErrorCode rsa_sign();
+ErrorCode rsa_pss_sign(uint8_t* Message, size_t Size, uint8_t* Seed, RSAKey PrivKey, ByteArr* Tag)
+{
+    // Tag size: \ceil ((modBits - 1)/8)
+    // I'm pretty sure I can do this with mod operations
+    //* Encode Message with PSS encode. (still bytes)
+    //* rsa_raw encode it
+    //* output into Tag
+}
 
 // RSA encrypt primitive is the mpz_t function with mod powers
 // RSA decrypt primitive is the mpz_t function with mod powers
