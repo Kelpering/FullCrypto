@@ -435,6 +435,10 @@ ErrorCode rsa_pss_sign(const uint8_t* Message, size_t Size, const uint8_t* Seed,
 
     ErrorCode TempError;
     size_t SeedSize = (mpz_sizeinbase(PrivKey.Mod, 2) + 7) >> 3;
+    size_t EmSize = (8*HashFunc.Size + 8*ModSize + 9+7) >> 3;
+
+    if (EmLen < HashFunc.Size + SeedSize + 2)
+        return length_error;
 
     // First 8 bytes are 0
     uint8_t* EncodedMessage = calloc(8 + HashFunc.Size + SeedSize, 1);
@@ -442,7 +446,6 @@ ErrorCode rsa_pss_sign(const uint8_t* Message, size_t Size, const uint8_t* Seed,
 
     if (EncodedMessage == NULL || Hash == NULL)
     {
-        printf("REACHED ERROR\n");
         free(EncodedMessage);
         free(Hash);
         return malloc_error;
@@ -464,6 +467,60 @@ ErrorCode rsa_pss_sign(const uint8_t* Message, size_t Size, const uint8_t* Seed,
     HashFunc.Func(EncodedMessage, 8+HashFunc.Size+SeedSize, Hash);
     free(EncodedMessage);
 
+    // Auto sets padding zeros
+    uint8_t* DB = calloc(EmSize-HashFunc.Size-1, 1);
+    uint8_t* DBMask = malloc(EmSize-HashFunc.Size-1);
+    if (DB == NULL || DBMask == NULL)
+    {
+        free(Hash);
+        free(DB);
+        free(DBMask);
+        return malloc_error;
+    }
+
+    // 0x01
+    DB[EmSize - SeedSize - HashFunc.Size - 2] = 0x01;
+
+    // Set Salt
+    for (size_t i = 0; i < SeedSize; i++)
+        DB[EmSize-SeedSize-HashFunc.Size-1 + i] = Seed[i];
+
+    TempError = rsa_mgf1(Hash, HashFunc.Size, EmSize-HashFunc.Size-1, HashFunc, DBMask);
+    if (TempError != success)
+    {
+        free(Hash);
+        free(DB);
+        free(DBMask);
+        return TempError;
+    }
+
+    Tag->Size = EmSize;
+    Tag->Arr = malloc(Tag->Size);
+    
+    //   11.  Set the leftmost 8*EmSize - (8*HashFunc.Size + 8*ModSize + 9) bits of the leftmost octet
+    //    in maskedDB to zero.
+    8*EmSize - (8*HashFunc.Size + 8*ModSize + 9);  // Bits to make 0 on maskedDB (leftmost)
+
+    // Set Tag MaskedDB || Hash || 0xbc
+    size_t i;
+    for (i = 0; i < EmSize-HashFunc.Size-1; i++)
+        Tag[i] = DB[i] ^ DBMask[i];
+    for (size_t j = 0; i < EmSize-HashFunc.Size; i++)
+        Tag[i] = Hash[j++];
+    Tag[EmSize-1] = 0xbc;
+
+    free(Hash);
+    free(DB);
+    free(DBMask);
+
+    return success;
+    
+
+    
+
+    // 11.  Set the leftmost 8emLen - emBits bits of the leftmost octet
+    //        in maskedDB to zero.
+
     // uint8_t* DB = Zero Padding || 0x01 || Seed (should be SeedSize - HashFunc.Size - 1)
     // DBMask = rsa_mgf1(Hash, HashFunc.Size, DBSize, HashFunc, DBMask[retArr]);
     // DB ^= DBMask
@@ -471,9 +528,6 @@ ErrorCode rsa_pss_sign(const uint8_t* Message, size_t Size, const uint8_t* Seed,
     //! Allows for all bit sizes of the shared modulus
     // Set 1 of the leftmost octets bits to 0 Bytes - Bits (ModSize*8-1 in the input in RFC)
     // Tag = DB(masked) || Hash || 0xbc
-
-
-    return success;
 }
 
 // RSA encrypt primitive is the mpz_t function with mod powers
