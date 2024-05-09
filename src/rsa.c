@@ -106,6 +106,7 @@ ErrorCode rsa_generate_keypair(size_t BitSize, uint64_t Seed, RSAKey* Public, RS
     mpz_t SeedNum;
     mpz_init_set_ui(SeedNum, Seed);
     gmp_randseed(RandState, SeedNum);
+    mpz_clear(SeedNum);
 
     // Initialize Temporary variables.
     mpz_t P, Q, Temp;
@@ -175,6 +176,22 @@ ErrorCode rsa_generate_keypair(size_t BitSize, uint64_t Seed, RSAKey* Public, RS
     return success;
 }
 
+ErrorCode rsa_encode(const uint8_t* Arr, size_t Size, mpz_t EncodedNum)
+{
+    mpz_init(EncodedNum);
+    mpz_import(EncodedNum, Size, 1, 1, 1, 0, Arr);
+
+    return success;
+}
+
+ErrorCode rsa_decode(mpz_t EncodedNum, ByteArr* RetArr)
+{
+    RetArr->Arr = mpz_export(NULL, &RetArr->Size, 1, 1, 1, 0, EncodedNum);
+    if (RetArr->Arr == NULL)
+        return malloc_error;
+    return success;
+}
+
 void rsa_destroy_key(RSAKey Key)
 {
     mpz_clear(Key.Exp);
@@ -184,7 +201,6 @@ void rsa_destroy_key(RSAKey Key)
 }
 
 //^ Priority: 1
-//! Use RSA_Encrypt for testing purposes
 // encrypt Plaintext -> Ciphertext with RSA-OAEP
 ErrorCode rsa_oaep_enc(const uint8_t* Plaintext, size_t PSize, const uint8_t* IV, const RSAKey PubKey, const HashParam HashFunc, ByteArr* RetArr)
 {
@@ -406,13 +422,58 @@ ErrorCode rsa_oaep_dec(const uint8_t* Ciphertext, size_t CSize, const RSAKey Pri
 //^ Priority: 3
 // Sign Text and return Tag (Tag == Hash of Text + Encrypted with Private)
 //! Might be subject to change
-ErrorCode rsa_pss_sign(uint8_t* Message, size_t Size, uint8_t* Seed, RSAKey PrivKey, ByteArr* Tag)
+ErrorCode rsa_pss_sign(const uint8_t* Message, size_t Size, const uint8_t* Seed, const RSAKey PrivKey, const HashParam HashFunc, ByteArr* Tag)
 {
     // Tag size: \ceil ((modBits - 1)/8)
     // I'm pretty sure I can do this with mod operations
     //* Encode Message with PSS encode. (still bytes)
     //* rsa_raw encode it
     //* output into Tag
+
+    // sLen (Output size in Bytes) is equal to ModBytes. Solves length check.
+    // SeedSize is assumed to be generated mod length (bits)/8 = Mod length in bytes
+
+    ErrorCode TempError;
+    size_t SeedSize = (mpz_sizeinbase(PrivKey.Mod, 2) + 7) >> 3;
+
+    // First 8 bytes are 0
+    uint8_t* EncodedMessage = calloc(8 + HashFunc.Size + SeedSize, 1);
+    uint8_t* Hash = malloc(HashFunc.Size);
+
+    if (EncodedMessage == NULL || Hash == NULL)
+    {
+        printf("REACHED ERROR\n");
+        free(EncodedMessage);
+        free(Hash);
+        return malloc_error;
+    }
+    
+    // Next HashFunc.Size bytes are the message hash
+    TempError = HashFunc.Func(Message, Size, EncodedMessage);
+    if (TempError != success)
+    {
+        free(EncodedMessage);
+        free(Hash);
+        return TempError;
+    }
+
+    // The rest (SeedSize) is the seed.
+    for (size_t i = 0; i < SeedSize; i++)
+        EncodedMessage[8+HashFunc.Size+i] = Seed[i];
+    
+    HashFunc.Func(EncodedMessage, 8+HashFunc.Size+SeedSize, Hash);
+    free(EncodedMessage);
+
+    // uint8_t* DB = Zero Padding || 0x01 || Seed (should be SeedSize - HashFunc.Size - 1)
+    // DBMask = rsa_mgf1(Hash, HashFunc.Size, DBSize, HashFunc, DBMask[retArr]);
+    // DB ^= DBMask
+    //! Some weird bit mods are going on here. Double check this entire function follows bits instead of bytes. Should work for enc/dec already
+    //! Allows for all bit sizes of the shared modulus
+    // Set 1 of the leftmost octets bits to 0 Bytes - Bits (ModSize*8-1 in the input in RFC)
+    // Tag = DB(masked) || Hash || 0xbc
+
+
+    return success;
 }
 
 // RSA encrypt primitive is the mpz_t function with mod powers
@@ -423,25 +484,25 @@ ErrorCode rsa_pss_sign(uint8_t* Message, size_t Size, uint8_t* Seed, RSAKey Priv
 
 //^ Priority: 3
 // Verify Text & Tag (Sign & Verify prevent Text from being modified: Hash can only be true if Text is same | Hash can only be encrypted by Private) [verifies both]
-ErrorCode rsa_verify();
+ErrorCode rsa_pss_verify()
+{
+
+}
 
 //? Private functions
 
 // Add note: raw rsa encryption and decryption are identical but with different keys
-ErrorCode rsa_raw(uint8_t* Arr, size_t Size, RSAKey Key, ByteArr* RetArr)
+static ErrorCode rsa_raw(const uint8_t* Arr, size_t Size, const RSAKey Key, ByteArr* RetArr)
 {
     // Imports Arr into EncodedNum (as a number representation)
     mpz_t EncodedNum;
-    mpz_init(EncodedNum);
-    mpz_import(EncodedNum, Size, 1, 1, 1, 0, Arr);
+    rsa_encode(Arr, Size, EncodedNum);
 
     // Encrypts EncodedNum according to raw RSA
     mpz_powm(EncodedNum, EncodedNum, Key.Exp, Key.Mod);
 
-    // Exports EncodedNum (encrypted) into RetArr
-    RetArr->Arr = mpz_export(NULL, &RetArr->Size, 1, 1, 1, 0, EncodedNum);
-    if (RetArr->Arr == NULL)
-        return malloc_error;
+    // Exports EncodedNum (encrypted) into RetArr, then clears EncodedNum.
+    rsa_decode(EncodedNum, RetArr);
     mpz_clear(EncodedNum);
 
     return success;

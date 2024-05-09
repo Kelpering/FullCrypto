@@ -74,29 +74,48 @@ int main()
 
     //? Playground
     uint8_t Plaintext[] = "Hello World";
-    uint8_t* IV = aes_generate_iv(time(NULL), 16);
+    uint8_t* IV = aes_generate_iv(time(NULL), 1024/8);
     RSAKey PubKey, PrivKey;
-    ByteArr Ciphertext, NewText;
+    ByteArr Ciphertext, NewText, PubArr, PrivArr, ModArr;
 
     //! Seeding (by MY function args) is insecure. Make into array of seed data (unlimited in theory), and I can call this func done.
     //^ PubKey and PrivKey are both mpz_t. To store, I might want to bring back the rsa encode/decode functions.
     rsa_generate_keypair(1024, time(NULL), &PubKey, &PrivKey);
-    gmp_printf("\nPUBLIC EXP: %Zd\n\nPRIVATE EXP: %Zd\n\nSHARED MOD: %Zd\n", PubKey.Exp, PrivKey.Exp, PubKey.Mod);
+    rsa_decode(PubKey.Exp, &PubArr);
+    rsa_decode(PrivKey.Exp, &PrivArr);
+    rsa_decode(PubKey.Mod, &ModArr);
+    printf("\n--Public Exponent--");
+    PrintInfo(PubArr.Arr, PubArr.Size, false);
+    printf("\n--Private Exponent--");
+    PrintInfo(PrivArr.Arr, PrivArr.Size, false);
+    printf("\n--Shared Modulus--");
+    PrintInfo(ModArr.Arr, ModArr.Size, false);
+    free(PubArr.Arr);
+    free(PrivArr.Arr);
+    free(ModArr.Arr);
+    // gmp_printf("\nPUBLIC EXP: %Zd\n\nPRIVATE EXP: %Zd\n\nSHARED MOD: %Zd\n", PubKey.Exp, PrivKey.Exp, PubKey.Mod);
 
-    PrintInfo(Plaintext, sizeof(Plaintext), true);
+    // printf("\n--Plaintext--");
+    // PrintInfo(Plaintext, sizeof(Plaintext), true);
 
-    //! I am unsure if the hash function will actually work for other hash sizes.
-    rsa_oaep_enc(Plaintext, sizeof(Plaintext), IV, PubKey, MD5Param, &Ciphertext);
-    PrintInfo(Ciphertext.Arr, Ciphertext.Size, false);
+    // //! I am unsure if the hash function will actually work for other hash sizes.
+    // rsa_oaep_enc(Plaintext, sizeof(Plaintext), IV, PubKey, MD5Param, &Ciphertext);
+    // printf("\n--Ciphertext--");
+    // PrintInfo(Ciphertext.Arr, Ciphertext.Size, false);
 
-    rsa_oaep_dec(Ciphertext.Arr, Ciphertext.Size, PrivKey, MD5Param, &NewText);
-    PrintInfo(NewText.Arr, NewText.Size, true);
+    // rsa_oaep_dec(Ciphertext.Arr, Ciphertext.Size, PrivKey, MD5Param, &NewText);
+    // printf("\n--Plaintext--");
+    // PrintInfo(NewText.Arr, NewText.Size, true);
+
+    rsa_pss_sign(Plaintext, sizeof(Plaintext), IV, PrivKey, MD5Param, &NewText);
+
 
 
     rsa_destroy_key(PubKey);
     rsa_destroy_key(PrivKey);
-    free(Ciphertext.Arr);
-    free(NewText.Arr);
+    // free(Ciphertext.Arr);
+    // free(NewText.Arr);
+    free(IV);
     
     return 0;
 }
@@ -105,11 +124,11 @@ void PrintInfo(uint8_t* Array, size_t Size, bool isString)
 {
     if (isString)
     {
-        printf("\nData is string.\nString: \"%s\"", Array);
+        printf("\nString: \"%s\"", Array);
     }
     else
     {
-        printf("\nData is not string.\nSize: %lu\n", Size);
+        printf("\nSize: %lu\nHex: ", Size);
         for (size_t i = 0; i < Size; i++)
             printf("%.2x", Array[i]);
     }

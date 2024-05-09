@@ -22,6 +22,8 @@
 
 
 // Description needed
+static ErrorCode rsa_raw(const uint8_t* Arr, size_t Size, RSAKey Key, ByteArr* RetArr);
+
 static ErrorCode rsa_mgf1(const uint8_t* Seed, size_t SeedSize, size_t RetSize, const HashParam HashFunc, uint8_t* RetArr);
 
 #endif // RSA_PRIVATE_H

@@ -33,7 +33,7 @@ const uint32_t T[64] =
 };
 
 //! Needs error detection, Needs entire revise tbh
-ErrorCode hash_md5(void* Data, size_t Size, uint8_t* RetArr)
+ErrorCode hash_md5(const void* Data, size_t Size, uint8_t* RetArr)
 {
     //? Calculate and assign variables.
 
