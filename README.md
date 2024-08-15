@@ -1,5 +1,7 @@
 # Newer plan
 
+## Rewrite in C++
+
 ### Take this project and refactor, with better safety and library-esque structure.
 - Public (safe) functions
 - Private (unsafe) functions that will be more susceptible to misuse, but much less strict.
