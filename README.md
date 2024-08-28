@@ -12,7 +12,7 @@
     - Current external libraries:
     - GMP (Gnu Mulitple Precision Library)
 - bignum library (for public key)
-- security standards (secure up to side-channel attacks)
+- security standards (secure up to but not including side-channel attacks)
 - unit testing (test functions with set parameters and outputs)
 - global data transfer/translate library (e.g. byte -> base64)
 - data storage standards (RSA key storage, encrypted file storage, etc)
